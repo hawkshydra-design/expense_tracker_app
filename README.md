@@ -78,5 +78,3 @@ User Action → Screen (UI)
                 ↓
            Local Storage
 ```
-
-Built with ❤️ using Flutter
