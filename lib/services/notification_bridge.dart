@@ -160,6 +160,9 @@ class NotificationBridge {
     final hasPermission = await isPermissionGranted();
     if (!hasPermission) return;
 
+    // Sync any queued notifications from when app was closed
+    await syncQueuedNotifications();
+
     // Cancel any existing subscription
     await stopListening();
 
@@ -180,6 +183,54 @@ class NotificationBridge {
     }
   }
 
+  /// Sync all queued notifications from native SQLite.
+  ///
+  /// Called when app opens/resumes. Reads unprocessed items stored
+  /// by the native NotificationListenerService while the app was closed,
+  /// processes each one, and marks them as processed in native DB.
+  Future<void> syncQueuedNotifications() async {
+    if (_activeUserId.isEmpty) return;
+
+    try {
+      // 1. Get all unprocessed notifications from native SQLite
+      final List<dynamic>? items =
+          await _methodChannel.invokeMethod('getQueuedNotifications');
+
+      if (items == null || items.isEmpty) {
+        debugPrint('NotificationBridge: No queued notifications to sync');
+        return;
+      }
+
+      debugPrint('NotificationBridge: Syncing ${items.length} queued notifications');
+
+      final processedIds = <int>[];
+
+      for (final dynamic item in items) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        final id = map['id'] as int?;
+
+        // Process each notification through the same pipeline
+        await _handleNotification(map);
+
+        if (id != null) {
+          processedIds.add(id);
+        }
+      }
+
+      // 2. Mark all as processed in native SQLite
+      if (processedIds.isNotEmpty) {
+        await _methodChannel.invokeMethod(
+          'markNotificationsProcessed',
+          processedIds,
+        );
+        debugPrint('NotificationBridge: Marked ${processedIds.length} as processed');
+      }
+    } catch (e) {
+      debugPrint('NotificationBridge: Sync failed: $e');
+    }
+  }
+
   /// Stop listening to notifications
   Future<void> stopListening() async {
     await _subscription?.cancel();
@@ -188,15 +239,39 @@ class NotificationBridge {
   }
 
   /// Handle an incoming notification event from the native EventChannel.
-  /// The [event] map contains: packageName, title, text, timestamp.
+  ///
+  /// The [event] map contains: packageName, title, text, bigText,
+  /// subText, summaryText, textLines, timestamp.
+  ///
+  /// GPay/PhonePe/Paytm typically put full transaction details in
+  /// `bigText` (expanded notification), while `text` may just say
+  /// "Tap for details" or show a truncated version without the amount.
   Future<void> _handleNotification(Map<String, dynamic> event) async {
     if (_activeUserId.isEmpty) return;
 
     final packageName = (event['packageName'] as String?) ?? '';
     final title = (event['title'] as String?) ?? '';
     final text = (event['text'] as String?) ?? '';
-    // Combine title + text for more reliable parsing
-    final fullText = '$title $text'.trim();
+    final bigText = (event['bigText'] as String?) ?? '';
+    final subText = (event['subText'] as String?) ?? '';
+    final textLines = (event['textLines'] as String?) ?? '';
+
+    // Build fullText: prefer bigText over text (bigText has the actual
+    // transaction details in GPay/PhonePe/Paytm notifications)
+    final primaryText = bigText.isNotEmpty ? bigText : text;
+    final parts = <String>[
+      title,
+      primaryText,
+      // Also include textLines as fallback (inbox-style notifications)
+      if (textLines.isNotEmpty && textLines != primaryText) textLines,
+      // SubText sometimes has the UPI ref or bank name
+      if (subText.isNotEmpty) subText,
+    ];
+    final fullText = parts.where((s) => s.isNotEmpty).join(' ').trim();
+
+    debugPrint('NotificationBridge: Processing from $packageName: '
+        'title="$title", text="${text.length > 50 ? '${text.substring(0, 50)}...' : text}", '
+        'bigText="${bigText.length > 50 ? '${bigText.substring(0, 50)}...' : bigText}"');
 
     // 1. Filter: only process known UPI/bank apps
     if (!_isMonitoredApp(packageName)) return;
@@ -206,7 +281,10 @@ class NotificationBridge {
       text: fullText,
       sourceApp: packageName,
     );
-    if (parsed == null) return;
+    if (parsed == null) {
+      debugPrint('NotificationBridge: Parser returned null for "$fullText"');
+      return;
+    }
 
     // 3. Deduplicate: skip if same amount+merchant within window
     if (_isDuplicateInMemory(parsed.amount, parsed.merchant)) return;

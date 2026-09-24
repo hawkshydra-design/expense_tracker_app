@@ -1,47 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Expense categories with display metadata.
 /// Uses Dart 3 enhanced enums — replaces the previous extension-based approach.
 enum ExpenseCategory {
   food(
     label: 'Food',
-    icon: Icons.restaurant_rounded,
-    color: Color(0xFFFF6B6B),
+    icon: LucideIcons.utensils,
+    color: Color(0xFFFB7185),
   ),
   transport(
     label: 'Transport',
-    icon: Icons.directions_car_rounded,
-    color: Color(0xFF4ECDC4),
+    icon: LucideIcons.car,
+    color: Color(0xFF22D3EE),
   ),
   shopping(
     label: 'Shopping',
-    icon: Icons.shopping_bag_rounded,
-    color: Color(0xFFFFE66D),
+    icon: LucideIcons.shoppingBag,
+    color: Color(0xFFF59E0B),
   ),
   bills(
     label: 'Bills',
-    icon: Icons.receipt_long_rounded,
-    color: Color(0xFFA8E6CF),
+    icon: LucideIcons.fileText,
+    color: Color(0xFF34D399),
   ),
   entertainment(
     label: 'Entertainment',
-    icon: Icons.movie_rounded,
-    color: Color(0xFFDDA0DD),
+    icon: LucideIcons.film,
+    color: Color(0xFFA78BFA),
   ),
   health(
     label: 'Health',
-    icon: Icons.favorite_rounded,
-    color: Color(0xFFFF8A80),
+    icon: LucideIcons.heart,
+    color: Color(0xFFEC4899),
   ),
   education(
     label: 'Education',
-    icon: Icons.school_rounded,
-    color: Color(0xFF82B1FF),
+    icon: LucideIcons.bookOpen,
+    color: Color(0xFF60A5FA),
   ),
   other(
     label: 'Other',
-    icon: Icons.more_horiz_rounded,
-    color: Color(0xFFB0BEC5),
+    icon: LucideIcons.moreHorizontal,
+    color: Color(0xFF94A3B8),
   );
 
   final String label;

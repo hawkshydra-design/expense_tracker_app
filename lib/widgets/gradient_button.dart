@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+import 'bounce_tap.dart';
 
-/// Animated gradient button with loading state.
+/// Animated gradient button with loading state and BounceTap feedback.
 /// Replaces 5 duplicated gradient button blocks across auth screens.
 class GradientButton extends StatelessWidget {
   final String text;
@@ -25,37 +26,32 @@ class GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width ?? double.infinity,
-      height: height,
-      child: DecoratedBox(
+    final enabled = onPressed != null && !isLoading;
+
+    return BounceTap(
+      onTap: enabled ? onPressed : null,
+      enableHaptic: enabled,
+      child: Container(
+        width: width ?? double.infinity,
+        height: height,
         decoration: BoxDecoration(
-          gradient: onPressed != null && !isLoading
+          gradient: enabled
               ? (gradient ?? AppColors.primaryGradient)
               : LinearGradient(
-                  colors: [Colors.grey.shade600, Colors.grey.shade700],
+                  colors: [Colors.grey.shade700, Colors.grey.shade800],
                 ),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          boxShadow: onPressed != null && !isLoading
+          borderRadius: BorderRadius.circular(AppRadius.button),
+          boxShadow: enabled
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.4),
+                    color: AppColors.kViolet.withValues(alpha: 0.35),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
                 ]
               : null,
         ),
-        child: ElevatedButton(
-          onPressed: isLoading ? null : onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-          ),
+        child: Center(
           child: isLoading
               ? const SizedBox(
                   width: 24,
@@ -69,7 +65,7 @@ class GradientButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[
-                      Icon(icon, size: 20),
+                      Icon(icon, size: 20, color: Colors.white),
                       const SizedBox(width: AppSpacing.sm),
                     ],
                     Text(
@@ -78,6 +74,7 @@ class GradientButton extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
+                        color: Colors.white,
                       ),
                     ),
                   ],

@@ -22,29 +22,18 @@ class MiniSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+    final subtitleColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
+    final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
-            color: borderColor.withValues(alpha: isDark ? 0.3 : 0.5)),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          color: isDark ? AppColors.kCardBorder : AppColors.lightBorder.withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,14 +54,21 @@ class MiniSummaryCard extends StatelessWidget {
                   fontSize: 11,
                   fontWeight: FontWeight.w500)),
           const SizedBox(height: 2),
-          Text(
-            context.read<CurrencyProvider>().format(amount),
-            style: TextStyle(
-              color: textColor,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-            overflow: TextOverflow.ellipsis,
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: amount),
+            duration: AppDurations.countUp,
+            curve: Curves.easeOut,
+            builder: (context, value, _) {
+              return Text(
+                context.read<CurrencyProvider>().format(value),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+                overflow: TextOverflow.ellipsis,
+              );
+            },
           ),
         ],
       ),

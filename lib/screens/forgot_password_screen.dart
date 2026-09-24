@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/error_banner.dart';
-import '../widgets/animated_gradient_background.dart';
+import '../widgets/bounce_tap.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -21,6 +22,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
   bool _isLoading = false;
   String? _error;
+
+  bool _emailSent = false;
 
   @override
   void dispose() {
@@ -36,140 +39,174 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
 
     final email = _emailController.text.trim();
-
-    // All logic through AuthProvider — no getIt access
     final authProvider = context.read<AuthProvider>();
-    final result = await authProvider.initiateForgotPassword(email: email);
+    final result = await authProvider.forgotPassword(email: email);
 
     if (!mounted) return;
 
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
-      context.push('/otp');
+      setState(() => _emailSent = true);
     } else {
-      setState(
-          () => _error = result.errorOrNull?.message ?? 'Failed to send code');
+      setState(() => _error = result.errorOrNull?.message ?? 'Failed to send reset email');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-
     return Scaffold(
-      body: AnimatedGradientBackground(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  const SizedBox(height: AppSpacing.xl),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                const SizedBox(height: AppSpacing.xl),
 
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      onPressed: () => context.pop(),
-                      icon: Icon(Icons.arrow_back_rounded, color: textColor),
-                    ),
-                  ).animate().fadeIn(duration: 300.ms),
+                // Back button
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: BounceTap(
+                    onTap: () => context.pop(),
+                    child: const Icon(LucideIcons.arrowLeft, color: AppColors.kTextPrimary),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(duration: 300.ms),
 
-                  const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
 
+                // Icon
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.warmGradient,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.kRose.withValues(alpha: 0.3),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(LucideIcons.keyRound, color: Colors.white, size: 32),
+                )
+                    .animate()
+                    .scaleXY(begin: 0.0, duration: 500.ms, curve: Curves.elasticOut),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // Title
+                const Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.kTextPrimary,
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 180.ms, duration: 400.ms),
+
+                const SizedBox(height: AppSpacing.sm),
+
+                // Subtitle
+                const Text(
+                  'Enter your email and we\'ll send a link to reset your password.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: AppColors.kTextSecondary, height: 1.5),
+                )
+                    .animate()
+                    .fadeIn(delay: 280.ms, duration: 400.ms),
+
+                const SizedBox(height: AppSpacing.xl),
+
+                // Success message or form
+                if (_emailSent) ...[
+                  const SizedBox(height: AppSpacing.md),
                   Container(
-                    width: 72,
-                    height: 72,
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      gradient: AppColors.warmGradient,
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.gradientPink.withValues(alpha: 0.3),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
+                      color: AppColors.kGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.kGreen.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.checkCircle, color: AppColors.kGreen, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Reset link sent to ${_emailController.text.trim()}. Check your inbox.',
+                            style: const TextStyle(color: AppColors.kTextPrimary, fontSize: 14),
+                          ),
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.lock_reset_rounded,
-                        color: Colors.white, size: 32),
                   )
                       .animate()
-                      .scale(
-                          begin: const Offset(0.5, 0.5),
-                          duration: 500.ms,
-                          curve: Curves.elasticOut)
-                      .fadeIn(duration: 400.ms),
-
-                  const SizedBox(height: AppSpacing.lg),
-
-                  Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: textColor),
-                  ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
-
-                  const SizedBox(height: AppSpacing.sm),
-
-                  Text(
-                    'Enter your email and we\'ll send a verification code to reset your password.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 14, color: subtitleColor, height: 1.5),
-                  ).animate().fadeIn(delay: 250.ms, duration: 400.ms),
-
+                      .fadeIn(duration: 400.ms)
+                      .slideY(begin: 0.1, curve: Curves.easeOutCubic),
                   const SizedBox(height: AppSpacing.xl),
-
-                  if (_error != null)
+                  GradientButton(
+                    text: 'Back to Sign In',
+                    onPressed: () => context.go('/login'),
+                    gradient: AppColors.warmGradient,
+                    icon: LucideIcons.arrowLeft,
+                  )
+                      .animate()
+                      .fadeIn(delay: 200.ms, duration: 400.ms),
+                ] else ...[
+                  // Error
+                  if (_error != null) ...[
                     ErrorBanner(
                       message: _error!,
                       onDismiss: () => setState(() => _error = null),
-                    ).animate().fadeIn(duration: 300.ms),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
 
-                  if (_error != null) const SizedBox(height: AppSpacing.md),
-
+                  // Email field
                   AppTextField(
                     controller: _emailController,
                     hintText: 'Email address',
-                    prefixIcon: Icons.email_outlined,
+                    prefixIcon: LucideIcons.mail,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _handleSubmit(),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Email is required';
-                      }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                          .hasMatch(v.trim())) {
+                      if (v == null || v.trim().isEmpty) return 'Email is required';
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim())) {
                         return 'Enter a valid email';
                       }
                       return null;
                     },
                   )
                       .animate()
-                      .fadeIn(delay: 350.ms, duration: 400.ms)
-                      .slideX(begin: -0.1, delay: 350.ms),
+                      .fadeIn(delay: 400.ms, duration: 400.ms)
+                      .slideY(begin: 0.2, curve: Curves.easeOutCubic),
 
                   const SizedBox(height: AppSpacing.xl),
 
+                  // Submit button
                   GradientButton(
-                    text: 'Send Reset Code',
+                    text: 'Send Reset Link',
                     isLoading: _isLoading,
                     onPressed: _handleSubmit,
                     gradient: AppColors.warmGradient,
-                    icon: Icons.send_rounded,
-                  ).animate().fadeIn(delay: 450.ms, duration: 400.ms),
-
-                  const SizedBox(height: AppSpacing.xxl),
+                    icon: LucideIcons.send,
+                  )
+                      .animate()
+                      .fadeIn(delay: 550.ms, duration: 400.ms),
                 ],
-              ),
+
+                const SizedBox(height: AppSpacing.xxl),
+              ],
             ),
           ),
         ),

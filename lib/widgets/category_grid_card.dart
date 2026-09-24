@@ -9,28 +9,32 @@ import '../utils/constants.dart';
 class CategoryGridCard extends StatelessWidget {
   final ExpenseCategory category;
   final double amount;
+  final double total;
   final int transactionCount;
-  final double percentage;
 
   const CategoryGridCard({
     super.key,
     required this.category,
     required this.amount,
+    required this.total,
     required this.transactionCount,
-    required this.percentage,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+    final subtitleColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
+    final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
+    final borderColor = isDark ? AppColors.kCardBorder : AppColors.lightBorder;
     final catColors = AppColors.categoryGradients[category.index];
+    final percentage = total > 0 ? (amount / total * 100) : 0.0;
+
+    final isMobile = AppBreakpoints.isMobile(context);
+    final cardPadding = isMobile ? 10.0 : AppSpacing.md;
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -79,7 +83,7 @@ class CategoryGridCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          SizedBox(height: isMobile ? AppSpacing.sm : AppSpacing.md),
           // Name + count
           Text(
             category.label,
@@ -98,7 +102,7 @@ class CategoryGridCard extends StatelessWidget {
               fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          SizedBox(height: isMobile ? 6.0 : AppSpacing.sm),
           // Amount
           Flexible(
             child: Text(

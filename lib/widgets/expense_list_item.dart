@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/expense.dart';
+import '../models/income_category.dart';
 import '../providers/currency_provider.dart';
 import '../utils/constants.dart';
 import '../utils/date_helpers.dart';
@@ -23,14 +25,21 @@ class ExpenseListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-    final catIndex = expense.category.index;
-    final catColors = AppColors.categoryGradients[catIndex];
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+    final subtitleColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
+    final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
+
+    // Use income category color for income items, expense category gradient for expenses
+    final List<Color> iconGradient;
+    final IconData iconData;
+    if (expense.isIncome) {
+      final incomeCat = expense.incomeCategory ?? IncomeCategory.other;
+      iconGradient = [incomeCat.color, incomeCat.color.withValues(alpha: 0.7)];
+      iconData = incomeCat.icon;
+    } else {
+      iconGradient = AppColors.categoryGradients[expense.category.index];
+      iconData = expense.category.icon;
+    }
 
     return Dismissible(
       key: Key(expense.id),
@@ -44,10 +53,10 @@ class ExpenseListItem extends StatelessWidget {
         padding: const EdgeInsets.only(right: AppSpacing.lg),
         margin: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(AppRadius.xl),
+          color: AppColors.kRose.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
-        child: const Icon(Icons.delete_rounded, color: AppColors.error),
+        child: const Icon(LucideIcons.trash2, color: AppColors.kRose),
       ),
       child: GestureDetector(
         onTap: () {
@@ -59,9 +68,9 @@ class ExpenseListItem extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
-              color: borderColor.withValues(alpha: isDark ? 0.3 : 0.5),
+              color: isDark ? AppColors.kCardBorder : AppColors.lightBorder.withValues(alpha: 0.5),
             ),
           ),
           child: Row(
@@ -70,10 +79,10 @@ class ExpenseListItem extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: catColors),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  gradient: LinearGradient(colors: iconGradient),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(expense.category.icon,
+                child: Icon(iconData,
                     color: Colors.white, size: 22),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -92,7 +101,7 @@ class ExpenseListItem extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                    expense.displayCategory,
+                      expense.displayCategory,
                       style: TextStyle(
                         color: subtitleColor,
                         fontSize: 12,
@@ -109,9 +118,7 @@ class ExpenseListItem extends StatelessWidget {
                     Text(
                       '${expense.isIncome ? '+' : '-'}${context.read<CurrencyProvider>().format(expense.amount)}',
                       style: TextStyle(
-                        color: expense.isIncome
-                            ? (isDark ? AppColors.successLight : AppColors.income)
-                            : (isDark ? AppColors.errorLight : AppColors.error),
+                        color: expense.isIncome ? AppColors.kGreen : AppColors.kRose,
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                       ),

@@ -14,7 +14,7 @@ import 'package:uuid/uuid.dart';
 /// Provides state for the dashboard banner and pending transactions screen.
 ///
 /// Uses [Result<T>] for all fallible operations, consistent with
-/// [ExpenseProvider]'s error-handling pattern.
+/// [TransactionProvider]'s error-handling pattern.
 class PendingTransactionProvider extends ChangeNotifier {
   final PendingTransactionRepository _pendingRepo;
   final ExpenseRepository _expenseRepo;
@@ -92,7 +92,7 @@ class PendingTransactionProvider extends ChangeNotifier {
 
   /// Confirm a pending transaction — converts it to a real expense.
   /// Returns [Success<Expense>] with the created expense, or [Failure].
-  /// Notifies via [onExpenseCreated] to keep ExpenseProvider cache in sync.
+  /// Notifies via [onExpenseCreated] to keep TransactionProvider cache in sync.
   Future<Result<Expense>> confirmTransaction(String id) async {
     final index = _pendingTransactions.indexWhere((t) => t.id == id);
     if (index == -1) {
@@ -125,7 +125,7 @@ class PendingTransactionProvider extends ChangeNotifier {
       _lastError = null;
       notifyListeners();
 
-      // 5. Notify listeners via event bus (ExpenseProvider subscribes)
+      // 5. Notify listeners via event bus (TransactionProvider subscribes)
       _eventBus.fire(ExpenseCreatedEvent(expense));
 
       return Success(expense);
@@ -164,7 +164,7 @@ class PendingTransactionProvider extends ChangeNotifier {
 
   /// Edit a pending transaction's details, then confirm it.
   /// Returns [Success<Expense>] with the created expense, or [Failure].
-  /// Notifies via [onExpenseCreated] to keep ExpenseProvider cache in sync.
+  /// Notifies via [onExpenseCreated] to keep TransactionProvider cache in sync.
   Future<Result<Expense>> editAndConfirm({
     required String id,
     required String title,
@@ -199,7 +199,7 @@ class PendingTransactionProvider extends ChangeNotifier {
       _lastError = null;
       notifyListeners();
 
-      // Notify listeners via event bus (ExpenseProvider subscribes)
+      // Notify listeners via event bus (TransactionProvider subscribes)
       _eventBus.fire(ExpenseCreatedEvent(expense));
 
       return Success(expense);

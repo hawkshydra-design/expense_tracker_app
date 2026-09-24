@@ -4,7 +4,6 @@ import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
-import android.text.TextUtils
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -12,14 +11,16 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * MainActivity registers two Flutter platform channels:
+ * MainActivity registers Flutter platform channels:
  *
  * 1. MethodChannel  ("com.expense.expense_tracker/notification")
- *    - isPermissionGranted → checks notification listener access
- *    - requestPermission   → opens system Notification Access settings
+ *    - isPermissionGranted     → checks notification listener access
+ *    - requestPermission       → opens system Notification Access settings
+ *    - getQueuedNotifications  → returns unprocessed items from native SQLite
+ *    - markNotificationsProcessed → marks synced items as processed
  *
  * 2. EventChannel   ("com.expense.expense_tracker/notifications_stream")
- *    - Streams notification data maps from [ExpenseNotificationListenerService]
+ *    - Real-time notification stream (when app is active)
  */
 class MainActivity : FlutterActivity() {
 
@@ -32,7 +33,9 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        // ── MethodChannel: permission check & request ──────────────
+        val db = NotificationDatabase.getInstance(applicationContext)
+
+        // ── MethodChannel: permission check, request, and queue sync ──
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -43,11 +46,33 @@ class MainActivity : FlutterActivity() {
                         openNotificationListenerSettings()
                         result.success(true)
                     }
+                    "getQueuedNotifications" -> {
+                        try {
+                            val items = db.getUnprocessed()
+                            result.success(items)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to get queued notifications: ${e.message}")
+                            result.success(emptyList<Map<String, Any>>())
+                        }
+                    }
+                    "markNotificationsProcessed" -> {
+                        try {
+                            val ids = (call.arguments as? List<*>)
+                                ?.filterIsInstance<Number>()
+                                ?.map { it.toLong() }
+                                ?: emptyList()
+                            db.markProcessed(ids)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to mark processed: ${e.message}")
+                            result.success(false)
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }
 
-        // ── EventChannel: notification stream ──────────────────────
+        // ── EventChannel: real-time notification stream ──────────────
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
@@ -64,7 +89,6 @@ class MainActivity : FlutterActivity() {
 
     /**
      * Checks whether our NotificationListenerService is enabled in system settings.
-     * Works on all Android API levels.
      */
     private fun isNotificationListenerEnabled(): Boolean {
         val flat = Settings.Secure.getString(
@@ -80,8 +104,7 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * Opens the system Notification Access settings page so the user
-     * can grant our app permission to read notifications.
+     * Opens the system Notification Access settings page.
      */
     private fun openNotificationListenerSettings() {
         try {

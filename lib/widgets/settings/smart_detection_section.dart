@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/pending_transaction_provider.dart';
 import '../../services/notification_bridge.dart';
 import '../../di/service_locator.dart';
 import '../../utils/constants.dart';
+import '../../widgets/bounce_tap.dart';
 import 'settings_tile.dart';
 
 /// Settings section for controlling smart UPI payment detection.
@@ -118,7 +120,7 @@ class _SmartDetectionSectionState extends State<SmartDetectionSection> {
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: const Icon(
-                    Icons.auto_awesome_rounded,
+                    LucideIcons.sparkles,
                     color: Colors.white,
                     size: 16,
                   ),
@@ -127,7 +129,7 @@ class _SmartDetectionSectionState extends State<SmartDetectionSection> {
                 Text(
                   'Smart Detection',
                   style: TextStyle(
-                    color: AppColors.accent,
+                    color: AppColors.kCyan,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                     letterSpacing: 0.5,
@@ -139,8 +141,8 @@ class _SmartDetectionSectionState extends State<SmartDetectionSection> {
 
           // Auto-detect toggle
           SettingsTile(
-            icon: Icons.radar_rounded,
-            iconColor: AppColors.accent,
+            icon: LucideIcons.radar,
+            iconColor: AppColors.kCyan,
             title: 'Auto-Detect Payments',
             subtitle: _isEnabled ? 'Listening for UPI payments' : 'Off',
             trailing: _isLoading
@@ -152,7 +154,7 @@ class _SmartDetectionSectionState extends State<SmartDetectionSection> {
                 : Switch.adaptive(
                     value: _isEnabled,
                     onChanged: _toggleAutoDetect,
-                    activeTrackColor: AppColors.accent,
+                    activeTrackColor: AppColors.kCyan,
                   ),
           ),
 
@@ -160,12 +162,12 @@ class _SmartDetectionSectionState extends State<SmartDetectionSection> {
             height: 1,
             indent: 56,
             color: widget.isDark
-                ? AppColors.darkBorder.withValues(alpha: 0.3)
+                ? AppColors.kCardBorder
                 : AppColors.lightBorder,
           ),
 
           // Notification access status
-          InkWell(
+          BounceTap(
             onTap: () async {
               final granted = await NotificationBridge.requestPermission();
               if (granted) {
@@ -175,15 +177,15 @@ class _SmartDetectionSectionState extends State<SmartDetectionSection> {
             },
             child: SettingsTile(
               icon: _hasPermission
-                  ? Icons.verified_rounded
-                  : Icons.warning_amber_rounded,
-              iconColor: _hasPermission ? AppColors.success : AppColors.warning,
+                  ? LucideIcons.shieldCheck
+                  : LucideIcons.alertTriangle,
+              iconColor: _hasPermission ? AppColors.kGreen : AppColors.kAmber,
               title: 'Notification Access',
               subtitle: _hasPermission
                   ? 'Permission granted ✓'
                   : 'Tap to grant access',
               trailing: Icon(
-                Icons.open_in_new_rounded,
+                LucideIcons.externalLink,
                 color: widget.subtitleColor,
                 size: 18,
               ),
@@ -197,14 +199,14 @@ class _SmartDetectionSectionState extends State<SmartDetectionSection> {
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.sm + 4),
               decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: widget.isDark ? 0.06 : 0.04),
+                color: AppColors.kCyan.withValues(alpha: widget.isDark ? 0.06 : 0.04),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
-                    Icons.info_outline_rounded,
+                    LucideIcons.info,
                     color: widget.subtitleColor,
                     size: 16,
                   ),

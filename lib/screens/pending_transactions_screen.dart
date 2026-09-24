@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/pending_transaction_provider.dart';
 import '../providers/expense_provider.dart';
 import '../models/pending_transaction.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
+import '../widgets/bounce_tap.dart';
 
 /// Full-screen list of auto-detected pending transactions.
 ///
@@ -20,28 +22,25 @@ class PendingTransactionsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+    final subtitleColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
     final padH = AppBreakpoints.horizontalPadding(context);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: textColor),
-          onPressed: () => Navigator.of(context).pop(),
+        leading: BounceTap(
+          onTap: () => Navigator.of(context).pop(),
+          child: const Padding(
+            padding: EdgeInsets.all(12),
+            child: Icon(LucideIcons.arrowLeft, color: AppColors.kTextPrimary),
+          ),
         ),
         title: Text(
           'Detected Payments',
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-          ),
+          style: TextStyle(color: textColor, fontWeight: FontWeight.w800, fontSize: 20),
         ),
         actions: [
           Consumer<PendingTransactionProvider>(
@@ -51,11 +50,7 @@ class PendingTransactionsScreen extends StatelessWidget {
                 onPressed: () => _handleDismissAll(context, provider),
                 child: const Text(
                   'Dismiss All',
-                  style: TextStyle(
-                    color: AppColors.error,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: AppColors.kPink, fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               );
             },
@@ -83,7 +78,10 @@ class PendingTransactionsScreen extends StatelessWidget {
                 onConfirm: () => _handleConfirm(context, tx),
                 onDismiss: () => _handleDismiss(context, tx),
                 onTap: () => _showEditDialog(context, tx),
-              );
+              )
+                  .animate()
+                  .fadeIn(delay: (80 * index).ms, duration: 350.ms)
+                  .slideX(begin: 0.05, curve: Curves.easeOutCubic);
             },
           );
         },
@@ -100,63 +98,51 @@ class PendingTransactionsScreen extends StatelessWidget {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.1),
+              color: AppColors.kCyan.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppRadius.xl),
             ),
             child: Icon(
-              Icons.check_circle_outline_rounded,
-              color: AppColors.accent.withValues(alpha: 0.5),
+              LucideIcons.checkCircle,
+              color: AppColors.kCyan.withValues(alpha: 0.5),
               size: 36,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             'All caught up!',
-            style: TextStyle(
-              color: textColor,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'No pending payments to review.\nDetected payments will appear here.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: subtitleColor,
-              fontSize: 14,
-              height: 1.5,
-            ),
+            style: TextStyle(color: subtitleColor, fontSize: 14, height: 1.5),
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 500.ms);
+    );
   }
 
-  Future<void> _handleConfirm(
-      BuildContext context, PendingTransaction tx) async {
+  Future<void> _handleConfirm(BuildContext context, PendingTransaction tx) async {
     final provider = context.read<PendingTransactionProvider>();
     final expenseProvider = context.read<ExpenseProvider>();
     final result = await provider.confirmTransaction(tx.id);
 
     if (result.isSuccess && context.mounted) {
-      // Reload expenses to reflect the new addition
       await expenseProvider.loadExpenses();
-
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✅ ₹${tx.amount.toStringAsFixed(0)} '
                 'to ${tx.displayTitle} added to expenses'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.kGreen,
           ),
         );
       }
     }
   }
 
-  Future<void> _handleDismiss(
-      BuildContext context, PendingTransaction tx) async {
+  Future<void> _handleDismiss(BuildContext context, PendingTransaction tx) async {
     final provider = context.read<PendingTransactionProvider>();
     await provider.dismissTransaction(tx.id);
 
@@ -181,13 +167,10 @@ class PendingTransactionsScreen extends StatelessWidget {
           'This cannot be undone.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            style: TextButton.styleFrom(foregroundColor: AppColors.kPink),
             child: const Text('Dismiss All'),
           ),
         ],
@@ -229,43 +212,36 @@ class _PendingTransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+    final subtitleColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
+    final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
+    final borderColor = isDark ? AppColors.kCardBorder : AppColors.lightBorder;
     final category = transaction.expenseCategory;
-    final currencyFmt = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
+    final currencyFmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
     final timeFmt = DateFormat('h:mm a');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Dismissible(
         key: Key(transaction.id),
-        // Swipe right → confirm
         confirmDismiss: (direction) async {
           if (direction == DismissDirection.startToEnd) {
             onConfirm();
-            return false; // We handle removal in provider
+            return false;
           } else {
             onDismiss();
             return false;
           }
         },
         background: _buildSwipeBackground(
-          color: AppColors.success,
-          icon: Icons.check_rounded,
+          color: AppColors.kGreen,
+          icon: LucideIcons.check,
           label: 'Confirm',
           alignment: Alignment.centerLeft,
         ),
         secondaryBackground: _buildSwipeBackground(
-          color: AppColors.error,
-          icon: Icons.close_rounded,
+          color: AppColors.kPink,
+          icon: LucideIcons.x,
           label: 'Dismiss',
           alignment: Alignment.centerRight,
         ),
@@ -276,13 +252,10 @@ class _PendingTransactionTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: cardColor,
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(
-                color: borderColor.withValues(alpha: isDark ? 0.3 : 0.5),
-              ),
+              border: Border.all(color: borderColor.withValues(alpha: isDark ? 0.3 : 0.5)),
             ),
             child: Row(
               children: [
-                // Category icon
                 Container(
                   width: 44,
                   height: 44,
@@ -290,27 +263,16 @@ class _PendingTransactionTile extends StatelessWidget {
                     color: category.color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
-                  child: Icon(
-                    category.icon,
-                    color: category.color,
-                    size: 22,
-                  ),
+                  child: Icon(category.icon, color: category.color, size: 22),
                 ),
-
                 const SizedBox(width: AppSpacing.md),
-
-                // Details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         transaction.displayTitle,
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -319,55 +281,34 @@ class _PendingTransactionTile extends StatelessWidget {
                         children: [
                           Text(
                             transaction.sourceApp ?? 'UPI',
-                            style: TextStyle(
-                              color: AppColors.accent,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: const TextStyle(color: AppColors.kCyan, fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                           Text(
                             ' · ${timeFmt.format(transaction.detectedAt)}',
-                            style: TextStyle(
-                              color: subtitleColor,
-                              fontSize: 11,
-                            ),
+                            style: TextStyle(color: subtitleColor, fontSize: 11),
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-
-                // Amount
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       currencyFmt.format(transaction.amount),
-                      style: TextStyle(
-                        color: AppColors.expense,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
+                      style: const TextStyle(color: AppColors.kRose, fontWeight: FontWeight.w800, fontSize: 16),
                     ),
                     const SizedBox(height: 2),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.accent
-                            .withValues(alpha: isDark ? 0.15 : 0.1),
+                        color: AppColors.kCyan.withValues(alpha: isDark ? 0.15 : 0.1),
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: Text(
                         category.label,
-                        style: const TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(color: AppColors.kCyan, fontSize: 10, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -377,10 +318,7 @@ class _PendingTransactionTile extends StatelessWidget {
           ),
         ),
       ),
-    )
-        .animate()
-        .fadeIn(delay: (100 + index * 60).ms, duration: 400.ms)
-        .slideX(begin: 0.05, delay: (100 + index * 60).ms);
+    );
   }
 
   Widget _buildSwipeBackground({
@@ -403,23 +341,9 @@ class _PendingTransactionTile extends StatelessWidget {
           if (alignment == Alignment.centerLeft) ...[
             Icon(icon, color: color, size: 24),
             const SizedBox(width: AppSpacing.xs),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
-            ),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 14)),
           ] else ...[
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
-            ),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 14)),
             const SizedBox(width: AppSpacing.xs),
             Icon(icon, color: color, size: 24),
           ],
@@ -448,10 +372,8 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
   @override
   void initState() {
     super.initState();
-    _titleController =
-        TextEditingController(text: widget.transaction.displayTitle);
-    _amountController = TextEditingController(
-        text: widget.transaction.amount.toStringAsFixed(2));
+    _titleController = TextEditingController(text: widget.transaction.displayTitle);
+    _amountController = TextEditingController(text: widget.transaction.amount.toStringAsFixed(2));
     _selectedCategory = widget.transaction.expenseCategory;
   }
 
@@ -465,107 +387,79 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+    final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, bottomInset + AppSpacing.lg),
+      padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, bottomInset + AppSpacing.lg),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadius.xxl),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle bar
             Center(
               child: Container(
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                  color: AppColors.kCardBorder,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-
-            Text(
-              'Edit Transaction',
-              style: TextStyle(
-                color: textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            Text('Edit Transaction',
+                style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.lg),
-
-            // Title field
             TextField(
               controller: _titleController,
               style: TextStyle(color: textColor),
+              cursorColor: AppColors.kViolet,
               decoration: InputDecoration(
                 labelText: 'Title',
-                labelStyle: TextStyle(
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.lightTextSecondary),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
+                labelStyle: TextStyle(color: isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                  ),
+                  borderSide: BorderSide(color: isDark ? AppColors.kCardBorder : AppColors.lightBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: const BorderSide(color: AppColors.kViolet, width: 2),
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-
-            // Amount field
             TextField(
               controller: _amountController,
               style: TextStyle(color: textColor),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              cursorColor: AppColors.kViolet,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: 'Amount (₹)',
-                labelStyle: TextStyle(
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.lightTextSecondary),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
+                labelStyle: TextStyle(color: isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                  ),
+                  borderSide: BorderSide(color: isDark ? AppColors.kCardBorder : AppColors.lightBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: const BorderSide(color: AppColors.kViolet, width: 2),
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-
-            // Category selector
-            Text(
-              'Category',
-              style: TextStyle(
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text('Category',
+                style: TextStyle(
+                  color: isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                )),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.sm,
@@ -576,21 +470,16 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
                   onTap: () => setState(() => _selectedCategory = cat),
                   child: AnimatedContainer(
                     duration: AppDurations.fast,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? cat.color.withValues(alpha: 0.2)
-                          : (isDark ? AppColors.darkBg : AppColors.lightBg),
+                          : (isDark ? AppColors.kBackground : AppColors.lightBg),
                       borderRadius: BorderRadius.circular(AppRadius.full),
                       border: Border.all(
                         color: isSelected
                             ? cat.color
-                            : (isDark
-                                ? AppColors.darkBorder
-                                : AppColors.lightBorder),
+                            : (isDark ? AppColors.kCardBorder : AppColors.lightBorder),
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
@@ -604,8 +493,7 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
                           style: TextStyle(
                             color: isSelected ? cat.color : textColor,
                             fontSize: 12,
-                            fontWeight:
-                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                           ),
                         ),
                       ],
@@ -615,21 +503,16 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
               }).toList(),
             ),
             const SizedBox(height: AppSpacing.lg),
-
-            // Action buttons
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, size: 18),
+                    icon: const Icon(LucideIcons.x, size: 18),
                     label: const Text('Cancel'),
                     style: OutlinedButton.styleFrom(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
                     ),
                   ),
                 ),
@@ -643,23 +526,14 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
                     ),
                     child: ElevatedButton.icon(
                       onPressed: () => _handleConfirm(context),
-                      icon: const Icon(Icons.check_rounded,
-                          size: 18, color: Colors.white),
-                      label: const Text(
-                        'Confirm & Add',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      icon: const Icon(LucideIcons.check, size: 18, color: Colors.white),
+                      label: const Text('Confirm & Add',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: AppSpacing.md),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
                       ),
                     ),
                   ),
@@ -701,7 +575,7 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
           SnackBar(
             content: Text('✅ ₹${amount.toStringAsFixed(0)} '
                 'to $title added to expenses'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.kGreen,
           ),
         );
       }

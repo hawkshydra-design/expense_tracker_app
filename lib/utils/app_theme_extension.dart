@@ -5,7 +5,7 @@ import 'constants.dart';
 ///
 /// Instead of:
 ///   final isDark = Theme.of(context).brightness == Brightness.dark;
-///   final textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+///   final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
 ///
 /// Use:
 ///   final textColor = context.textPrimary;
@@ -14,31 +14,31 @@ extension AppThemeX on BuildContext {
 
   // ─── Text Colors ─────────────────────────────────────────
   Color get textPrimary =>
-      isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+      isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
 
   Color get textSecondary =>
-      isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+      isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
 
   Color get textMuted =>
-      isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+      isDark ? AppColors.kTextMuted : AppColors.lightTextMuted;
 
   // ─── Surface Colors ──────────────────────────────────────
-  Color get cardColor => isDark ? AppColors.darkCard : AppColors.lightCard;
+  Color get cardColor => isDark ? AppColors.kSurface : AppColors.lightCard;
 
   Color get cardAltColor =>
-      isDark ? AppColors.darkCardAlt : AppColors.lightCardAlt;
+      isDark ? AppColors.kSurface : AppColors.lightCardAlt;
 
   Color get surfaceColor =>
-      isDark ? AppColors.darkSurface : AppColors.lightSurface;
+      isDark ? AppColors.kSurface : AppColors.lightSurface;
 
-  Color get bgColor => isDark ? AppColors.darkBg : AppColors.lightBg;
+  Color get bgColor => isDark ? AppColors.kBackground : AppColors.lightBg;
 
   // ─── Border Colors ───────────────────────────────────────
   Color get borderColor =>
-      isDark ? AppColors.darkBorder : AppColors.lightBorder;
+      isDark ? AppColors.kCardBorder : AppColors.lightBorder;
 
   Color get borderSubtle => isDark
-      ? AppColors.darkBorder.withValues(alpha: 0.3)
+      ? AppColors.kCardBorder
       : AppColors.lightBorder;
 
   // ─── Convenience ─────────────────────────────────────────

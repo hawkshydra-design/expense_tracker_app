@@ -1,6 +1,8 @@
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../utils/constants.dart';
 
 /// Expandable Floating Action Button with animated sub-actions.
@@ -125,55 +127,81 @@ class _ExpandableFabState extends State<ExpandableFab>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Label
+                  // Label — glass chip
                   if (action.label != null)
                     Container(
                       margin: const EdgeInsets.only(right: AppSpacing.sm),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.darkCard
-                            : AppColors.lightCard,
+                      child: ClipRRect(
                         borderRadius: BorderRadius.circular(AppRadius.sm),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.sm,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white.withValues(alpha: GlassTokens.fillDark)
+                                  : Colors.white.withValues(alpha: GlassTokens.fillLight),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.10),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Text(
+                              action.label!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.kTextPrimary
+                                    : AppColors.lightTextPrimary,
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
-                      child: Text(
-                        action.label!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? AppColors.darkTextPrimary
-                              : AppColors.lightTextPrimary,
                         ),
                       ),
                     ),
-                  // Icon button
-                  SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: FloatingActionButton(
-                      heroTag: 'fab_action_$index',
-                      onPressed: () {
-                        _toggle();
-                        action.onPressed();
-                      },
-                      elevation: 4,
-                      backgroundColor: action.color ?? AppColors.primarySoft,
-                      foregroundColor: action.iconColor ?? AppColors.primaryDark,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+                  // Icon button — glass styled
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: GestureDetector(
+                        onTap: () {
+                          _toggle();
+                          action.onPressed();
+                        },
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: (action.color ?? AppColors.kPrimary.withValues(alpha: 0.2))
+                                .withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            border: Border.all(
+                              color: (action.iconColor ?? AppColors.kPrimary)
+                                  .withValues(alpha: 0.25),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (action.iconColor ?? AppColors.kPrimary)
+                                    .withValues(alpha: 0.15),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            action.icon,
+                            size: 22,
+                            color: action.iconColor ?? AppColors.primaryDark,
+                          ),
+                        ),
                       ),
-                      child: Icon(action.icon, size: 22),
                     ),
                   ),
                 ],
@@ -189,20 +217,39 @@ class _ExpandableFabState extends State<ExpandableFab>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return FloatingActionButton(
-          heroTag: 'main_fab',
-          onPressed: _toggle,
-          elevation: 8,
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-          ),
-          child: Transform.rotate(
-            angle: _controller.value * pi / 4,
-            child: Icon(
-              _isOpen ? Icons.close_rounded : Icons.add_rounded,
-              size: 28,
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: GestureDetector(
+              onTap: _toggle,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.kPrimary.withValues(alpha: 0.4),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Transform.rotate(
+                  angle: _controller.value * pi / 4,
+                  child: Icon(
+                    _isOpen ? LucideIcons.x : LucideIcons.plus,
+                    size: 28,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ),
           ),
         );

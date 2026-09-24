@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../screens/home_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/currency_provider.dart';
+import '../../models/expense.dart';
 import '../../utils/constants.dart';
+import 'bounce_tap.dart';
 import 'balance_card.dart';
 import 'quick_action_row.dart';
 import 'mini_summary_card.dart';
@@ -18,16 +22,20 @@ import 'pending_transaction_banner.dart';
 /// Displays the welcome header, balance card, quick actions,
 /// summary cards (today/week/month), and the scrollable expense list.
 /// Extracted from HomeScreen to keep it focused on navigation.
-class DashboardTab extends StatelessWidget {
+class DashboardTab extends StatefulWidget {
   const DashboardTab({super.key});
+
+  @override
+  State<DashboardTab> createState() => _DashboardTabState();
+}
+
+class _DashboardTabState extends State<DashboardTab> {
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+    final subtitleColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
     final authProvider = context.watch<AuthProvider>();
     final expenseProvider = context.watch<ExpenseProvider>();
     final padH = AppBreakpoints.horizontalPadding(context);
@@ -38,14 +46,14 @@ class DashboardTab extends StatelessWidget {
         : 40.0;
 
     return SafeArea(
-      bottom: false, // We handle bottom padding manually for nav bar
+      bottom: false,
       child: RefreshIndicator(
         onRefresh: () async {
           HapticFeedback.mediumImpact();
           await expenseProvider.loadExpenses();
         },
-        color: AppColors.primary,
-        backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: AppColors.kViolet,
+        backgroundColor: isDark ? AppColors.kSurface : AppColors.lightCard,
         child: CustomScrollView(
           slivers: [
             // ─── App Bar ─────────────────────────────────────
@@ -65,8 +73,7 @@ class DashboardTab extends StatelessWidget {
                             children: [
                               Text(
                                 'Welcome back,',
-                                style: TextStyle(
-                                    color: subtitleColor, fontSize: 14),
+                                style: TextStyle(color: subtitleColor, fontSize: 14),
                               ),
                               Text(
                                 authProvider.userName,
@@ -75,26 +82,35 @@ class DashboardTab extends StatelessWidget {
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
                                 ),
-                              ),
+                              )
+                                  .animate()
+                                  .fadeIn(delay: 50.ms, duration: 400.ms)
+                                  .slideX(begin: 0.3, curve: Curves.easeOutCubic),
                             ],
                           ),
                         ),
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                          child: Center(
-                            child: Text(
-                              authProvider.userName.isNotEmpty
-                                  ? authProvider.userName[0].toUpperCase()
-                                  : 'U',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 18,
+                        BounceTap(
+                          onTap: () {
+                            context.findAncestorStateOfType<HomeScreenState>()
+                                ?.switchToTab(2);
+                          },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              gradient: AppColors.primaryGradient,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                            child: Center(
+                              child: Text(
+                                authProvider.userName.isNotEmpty
+                                    ? authProvider.userName[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                ),
                               ),
                             ),
                           ),
@@ -103,7 +119,9 @@ class DashboardTab extends StatelessWidget {
                     ),
                   ),
                 ),
-              ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
+              )
+                  .animate()
+                  .fadeIn(duration: 400.ms, curve: Curves.easeOut),
             ),
 
             // ─── Pending Transaction Banner ──────────────────
@@ -118,7 +136,9 @@ class DashboardTab extends StatelessWidget {
                     child: const PendingTransactionBanner(),
                   ),
                 ),
-              ),
+              )
+                  .animate()
+                  .fadeIn(delay: 100.ms, duration: 400.ms, curve: Curves.easeOut),
             ),
 
             // ─── Balance Card ────────────────────────────────
@@ -138,7 +158,10 @@ class DashboardTab extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
+              )
+                  .animate()
+                  .fadeIn(delay: 150.ms, duration: 500.ms)
+                  .scaleXY(begin: 0.95, curve: Curves.easeOutCubic),
             ),
 
             // ─── Quick Actions ──────────────────────────────
@@ -147,9 +170,13 @@ class DashboardTab extends StatelessWidget {
                 padding: EdgeInsets.fromLTRB(padH, AppSpacing.lg, padH, 0),
                 child: QuickActionRow(
                   onAddExpense: () => context.push('/add-expense'),
-                  onAddIncome: () => context.push('/add-expense'),
+                  onAddIncome: () => context.push('/add-expense', extra: {
+                    'type': TransactionType.income,
+                  }),
                 ),
-              ).animate().fadeIn(delay: 350.ms, duration: 400.ms),
+              )
+                  .animate()
+                  .fadeIn(delay: 250.ms, duration: 400.ms, curve: Curves.easeOut),
             ),
 
             // ─── Summary Row ────────────────────────────────
@@ -168,15 +195,14 @@ class DashboardTab extends StatelessWidget {
                 ),
               )
                   .animate()
-                  .fadeIn(delay: 400.ms, duration: 500.ms)
-                  .slideY(begin: 0.15, delay: 400.ms),
+                  .fadeIn(delay: 350.ms, duration: 400.ms, curve: Curves.easeOut)
+                  .slideY(begin: 0.1, curve: Curves.easeOutCubic),
             ),
 
             // ─── Transactions Header ───────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                    padH, AppSpacing.lg, padH, AppSpacing.sm),
+                padding: EdgeInsets.fromLTRB(padH, AppSpacing.lg, padH, AppSpacing.sm),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -194,13 +220,13 @@ class DashboardTab extends StatelessWidget {
                         vertical: AppSpacing.xs + 2,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
+                        color: AppColors.kViolet.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(AppRadius.full),
                       ),
                       child: Text(
                         '${expenseProvider.expenses.length} items',
                         style: const TextStyle(
-                          color: AppColors.primary,
+                          color: AppColors.kViolet,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -208,7 +234,9 @@ class DashboardTab extends StatelessWidget {
                     ),
                   ],
                 ),
-              ).animate().fadeIn(delay: 500.ms, duration: 400.ms),
+              )
+                  .animate()
+                  .fadeIn(delay: 450.ms, duration: 400.ms, curve: Curves.easeOut),
             ),
 
             // ─── Expense list ───────────────────────────────
@@ -222,12 +250,12 @@ class DashboardTab extends StatelessWidget {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
+                          color: AppColors.kViolet.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(AppRadius.xl),
                         ),
                         child: Icon(
-                          Icons.receipt_long_rounded,
-                          color: AppColors.primary.withValues(alpha: 0.5),
+                          LucideIcons.receipt,
+                          color: AppColors.kViolet.withValues(alpha: 0.5),
                           size: 36,
                         ),
                       ),
@@ -243,7 +271,7 @@ class DashboardTab extends StatelessWidget {
                       ),
                     ],
                   ),
-                ).animate().fadeIn(delay: 600.ms, duration: 500.ms),
+                ),
               )
             else
               SliverList(
@@ -271,7 +299,7 @@ class DashboardTab extends StatelessWidget {
                                         Text('Deleted "${expense.title}"'),
                                     action: SnackBarAction(
                                       label: 'Undo',
-                                      textColor: AppColors.primary,
+                                      textColor: AppColors.kViolet,
                                       onPressed: () => expenseProvider
                                           .restoreExpense(deleted),
                                     ),
@@ -282,12 +310,7 @@ class DashboardTab extends StatelessWidget {
                           ),
                         ),
                       ),
-                    )
-                        .animate()
-                        .fadeIn(
-                            delay: (600 + index * 60).ms, duration: 400.ms)
-                        .slideX(
-                            begin: 0.05, delay: (600 + index * 60).ms);
+                    );
                   },
                   childCount: expenseProvider.expenses.length,
                   addAutomaticKeepAlives: false,
@@ -312,7 +335,7 @@ class DashboardTab extends StatelessWidget {
             label: 'Today',
             amount: provider.todaySpending,
             gradient: AppColors.successGradient,
-            icon: Icons.today_rounded,
+            icon: LucideIcons.calendarCheck,
           ),
         ),
       ),
@@ -324,7 +347,7 @@ class DashboardTab extends StatelessWidget {
             label: 'Week',
             amount: provider.weekSpending,
             gradient: AppColors.accentGradient,
-            icon: Icons.date_range_rounded,
+            icon: LucideIcons.calendarDays,
           ),
         ),
       ),
@@ -336,7 +359,7 @@ class DashboardTab extends StatelessWidget {
             label: 'Month',
             amount: provider.monthSpending,
             gradient: AppColors.warmGradient,
-            icon: Icons.calendar_month_rounded,
+            icon: LucideIcons.calendar,
           ),
         ),
       ),
@@ -385,11 +408,9 @@ class DashboardTab extends StatelessWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
-        final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-        final textColor =
-            isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-        final subtitleColor =
-            isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+        final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
+        final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+        final subtitleColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
 
         return Container(
           constraints: BoxConstraints(
@@ -412,9 +433,7 @@ class DashboardTab extends StatelessWidget {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.darkBorder
-                            : AppColors.lightBorder,
+                        color: AppColors.kCardBorder,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -437,8 +456,7 @@ class DashboardTab extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             gradient: AppColors.expenseGradient,
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.full),
+                            borderRadius: BorderRadius.circular(AppRadius.full),
                           ),
                           child: Text(
                             currencyProvider.format(total),
@@ -479,10 +497,9 @@ class DashboardTab extends StatelessWidget {
                           padding: const EdgeInsets.all(AppSpacing.md),
                           decoration: BoxDecoration(
                             color: isDark
-                                ? AppColors.darkBg
+                                ? AppColors.kBackground
                                 : AppColors.lightCardAlt,
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
                           child: Row(
                             children: [
@@ -502,8 +519,7 @@ class DashboardTab extends StatelessWidget {
                               const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       expense.title,
@@ -524,9 +540,9 @@ class DashboardTab extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                currencyProvider.format(expense.amount),
+                                '${expense.isIncome ? '+' : '-'}${currencyProvider.format(expense.amount)}',
                                 style: TextStyle(
-                                  color: AppColors.expense,
+                                  color: expense.isIncome ? AppColors.kGreen : AppColors.kRose,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 15,
                                 ),

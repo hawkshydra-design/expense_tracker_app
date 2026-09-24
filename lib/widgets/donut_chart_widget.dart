@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/category.dart';
 import '../providers/currency_provider.dart';
@@ -27,8 +28,8 @@ class _DonutChartWidgetState extends State<DonutChartWidget> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+    final subtitleColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
     final total = widget.data.values.fold(0.0, (s, v) => s + v);
 
     if (widget.data.isEmpty || total == 0) {
@@ -39,9 +40,9 @@ class _DonutChartWidgetState extends State<DonutChartWidget> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.pie_chart_outline_rounded,
+                LucideIcons.pieChart,
                 size: 56,
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                color: isDark ? AppColors.kCardBorder : AppColors.lightBorder,
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -83,7 +84,7 @@ class _DonutChartWidgetState extends State<DonutChartWidget> {
                 _buildTouchedCenter(total)
               else ...[
                 Icon(
-                  Icons.pie_chart_rounded,
+                  LucideIcons.pieChart,
                   color: subtitleColor.withValues(alpha: 0.5),
                   size: 24,
                 ),
@@ -114,7 +115,7 @@ class _DonutChartWidgetState extends State<DonutChartWidget> {
 
   Widget _buildTouchedCenter(double total) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
     final entry = widget.data.entries.toList()[_touchedIndex];
     final pct = (entry.value / total * 100).toStringAsFixed(1);
 

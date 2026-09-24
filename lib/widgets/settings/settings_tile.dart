@@ -27,9 +27,9 @@ class SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = titleColor ??
-        (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary);
+        (isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary);
     final subtitleTextColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+        isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../utils/constants.dart';
@@ -14,11 +15,11 @@ class CurrencyPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
+    final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
     final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+        isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
     final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+        isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
     final currencyProvider = context.watch<CurrencyProvider>();
 
     return Container(
@@ -42,7 +43,7 @@ class CurrencyPickerSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    color: isDark ? AppColors.kCardBorder : AppColors.lightBorder,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -69,7 +70,7 @@ class CurrencyPickerSheet extends StatelessWidget {
                 final isSelected =
                     currency.code == currencyProvider.selected.code;
 
-                return InkWell(
+                return GestureDetector(
                   onTap: () {
                     currencyProvider.setCurrency(currency);
                     Navigator.of(context).pop();
@@ -81,13 +82,13 @@ class CurrencyPickerSheet extends StatelessWidget {
                         horizontal: AppSpacing.md, vertical: AppSpacing.md),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppColors.primary
+                          ? AppColors.kViolet
                               .withValues(alpha: isDark ? 0.15 : 0.08)
                           : null,
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       border: isSelected
                           ? Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.3))
+                              color: AppColors.kViolet.withValues(alpha: 0.3))
                           : null,
                     ),
                     child: Row(
@@ -117,8 +118,8 @@ class CurrencyPickerSheet extends StatelessWidget {
                           ),
                         ),
                         if (isSelected)
-                          Icon(Icons.check_circle_rounded,
-                              color: AppColors.primary, size: 22),
+                          Icon(LucideIcons.checkCircle,
+                              color: AppColors.kViolet, size: 22),
                       ],
                     ),
                   ),

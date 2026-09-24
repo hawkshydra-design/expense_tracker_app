@@ -30,24 +30,24 @@ class CategoryChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? color.withValues(alpha: 0.2)
-              : (isDark ? AppColors.darkCardAlt : AppColors.lightCardAlt),
-          borderRadius: BorderRadius.circular(AppRadius.full),
+              : (isDark ? AppColors.kSurfaceLight : AppColors.lightCardAlt),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           border: Border.all(
             color: isSelected
                 ? color
-                : (isDark ? AppColors.darkBorder : AppColors.lightBorder).withValues(alpha: 0.4),
+                : (isDark ? AppColors.kCardBorder : AppColors.lightBorder.withValues(alpha: 0.4)),
             width: isSelected ? 1.5 : 1,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: isSelected ? color : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted)),
+            Icon(icon, size: 16, color: isSelected ? color : (isDark ? AppColors.kTextMuted : AppColors.lightTextMuted)),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? color : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                color: isSelected ? color : (isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 fontSize: 13,
               ),

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Include the SQLite database -->
+    <include domain="database" path="expense_tracker_v2.db" />
+    <!-- Include SharedPreferences (theme, currency, settings) -->
+    <include domain="sharedpref" path="." />
+</full-backup-content>

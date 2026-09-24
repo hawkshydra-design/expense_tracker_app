@@ -45,3 +45,17 @@ app.*.map.json
 # Environment variables - NEVER commit
 .env
 .env.*
+
+# Firebase config files (contain API keys)
+**/google-services.json
+**/GoogleService-Info.plist
+lib/firebase_options.dart
+
+# Keystore files
+*.jks
+*.keystore
+*.jks.old
+key.properties
+
+# Local properties (SDK paths)
+**/local.properties

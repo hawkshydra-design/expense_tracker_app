@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
@@ -16,11 +17,11 @@ class BackupExportSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
+    final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
     final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+        isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
     final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+        isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -39,7 +40,7 @@ class BackupExportSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              color: isDark ? AppColors.kCardBorder : AppColors.lightBorder,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -56,8 +57,8 @@ class BackupExportSheet extends StatelessWidget {
 
           // Export CSV
           _BackupOption(
-            icon: Icons.table_chart_rounded,
-            iconColor: AppColors.income,
+            icon: LucideIcons.sheet,
+            iconColor: AppColors.kGreen,
             title: 'Export as CSV',
             subtitle: 'Spreadsheet-compatible format',
             onTap: () => _exportCsv(context),
@@ -69,8 +70,8 @@ class BackupExportSheet extends StatelessWidget {
 
           // Copy to clipboard
           _BackupOption(
-            icon: Icons.copy_rounded,
-            iconColor: AppColors.accent,
+            icon: LucideIcons.copy,
+            iconColor: AppColors.kCyan,
             title: 'Copy to Clipboard',
             subtitle: 'Copy expense data as text',
             onTap: () => _copyToClipboard(context),
@@ -200,9 +201,8 @@ class _BackupOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
@@ -238,7 +238,7 @@ class _BackupOption extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: subtitleColor, size: 20),
+            Icon(LucideIcons.chevronRight, color: subtitleColor, size: 20),
           ],
         ),
       ),

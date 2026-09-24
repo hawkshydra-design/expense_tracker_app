@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/currency_provider.dart';
@@ -55,11 +56,11 @@ class _NotificationSettingsSheetState extends State<NotificationSettingsSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
+    final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
     final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+        isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
     final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+        isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
     final currencySymbol = context.read<CurrencyProvider>().symbol;
 
     return Container(
@@ -82,7 +83,7 @@ class _NotificationSettingsSheetState extends State<NotificationSettingsSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                  color: isDark ? AppColors.kCardBorder : AppColors.lightBorder,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -100,8 +101,8 @@ class _NotificationSettingsSheetState extends State<NotificationSettingsSheet> {
 
             // Daily Reminder toggle
             _buildToggleRow(
-              icon: Icons.alarm_rounded,
-              iconColor: AppColors.accent,
+              icon: LucideIcons.alarmClock,
+              iconColor: AppColors.kCyan,
               title: 'Daily Reminder',
               subtitle: _dailyReminder
                   ? 'Reminds you at ${_reminderTime.format(context)}'
@@ -135,26 +136,26 @@ class _NotificationSettingsSheetState extends State<NotificationSettingsSheet> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: isDark ? 0.1 : 0.06),
+                      color: AppColors.kCyan.withValues(alpha: isDark ? 0.1 : 0.06),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.schedule_rounded,
-                            color: AppColors.accent, size: 16),
+                        Icon(LucideIcons.clock,
+                            color: AppColors.kCyan, size: 16),
                         const SizedBox(width: 6),
                         Text(
                           'Time: ${_reminderTime.format(context)}',
                           style: TextStyle(
-                            color: AppColors.accent,
+                            color: AppColors.kCyan,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Icon(Icons.edit_rounded,
-                            color: AppColors.accent, size: 14),
+                        Icon(LucideIcons.pencil,
+                            color: AppColors.kCyan, size: 14),
                       ],
                     ),
                   ),
@@ -165,8 +166,8 @@ class _NotificationSettingsSheetState extends State<NotificationSettingsSheet> {
 
             // Budget Alerts toggle
             _buildToggleRow(
-              icon: Icons.account_balance_wallet_rounded,
-              iconColor: AppColors.warning,
+              icon: LucideIcons.wallet,
+              iconColor: AppColors.kAmber,
               title: 'Budget Alerts',
               subtitle: _budgetAlerts
                   ? 'Alert when spending exceeds $currencySymbol${_budgetLimit.toStringAsFixed(0)}/month'
@@ -201,7 +202,7 @@ class _NotificationSettingsSheetState extends State<NotificationSettingsSheet> {
                       min: 1000,
                       max: 100000,
                       divisions: 99,
-                      activeColor: AppColors.warning,
+                      activeColor: AppColors.kAmber,
                       label: '$currencySymbol${_budgetLimit.toStringAsFixed(0)}',
                       onChanged: (v) {
                         setState(() => _budgetLimit = v);
@@ -223,8 +224,8 @@ class _NotificationSettingsSheetState extends State<NotificationSettingsSheet> {
 
             // Weekly Report toggle
             _buildToggleRow(
-              icon: Icons.summarize_rounded,
-              iconColor: AppColors.primary,
+              icon: LucideIcons.fileText,
+              iconColor: AppColors.kViolet,
               title: 'Weekly Summary',
               subtitle: 'Get a spending summary every Sunday',
               value: _weeklyReport,

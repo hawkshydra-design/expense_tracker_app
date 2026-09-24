@@ -27,19 +27,30 @@ class ParsedTransaction {
 ///
 /// Supports formats from Google Pay, Paytm, PhonePe, BHIM,
 /// and most Indian bank SMS/push notifications.
+///
+/// Handles both P2M (person-to-merchant) and P2P (person-to-person)
+/// transaction notification formats including:
+///   - "You paid ₹500 to Swiggy"           (P2M standard)
+///   - "₹20 sent to +91XXXXXXXX"           (P2P phone number)
+///   - "Payment of ₹200 to auto driver"     (P2P casual)
+///   - "Paid ₹100"                          (minimal format)
+///   - "You sent ₹500 to Name on UPI"       (GPay P2P)
+///   - "Debited ₹1,200 from A/c XX1234"     (Bank SMS)
+///   - "Rs.500 debited from SBI A/c"        (Bank SMS variant)
 class TransactionParser {
   TransactionParser._();
 
   // ─── Amount patterns ───────────────────────────────────────
-  // Matches: ₹500, Rs.1,200.50, INR 999, Rs 50
+  // Matches: ₹500, Rs.1,200.50, INR 999, Rs 50, Rupees 100
+  // Also handles: "of ₹200", "for ₹500" (common in P2P formats)
   static final _amountRegex = RegExp(
-    r'(?:Rs\.?\s?|₹\s?|INR\s?)([\d,]+(?:\.\d{1,2})?)',
+    r'(?:Rs\.?\s?|₹\s?|INR\s?|Rupees?\s?)\s*([0-9,]+(?:\.[0-9]{1,2})?)',
     caseSensitive: false,
   );
 
   // ─── Debit indicators ─────────────────────────────────────
   static final _debitRegex = RegExp(
-    r'(?:debited|debit|sent|paid|spent|purchase|payment|transferred|withdrawn|charged)',
+    r'(?:debited|debit|sent|paid|spent|purchase|payment|transferred|withdrawn|charged|paying|pay\b)',
     caseSensitive: false,
   );
 
@@ -49,7 +60,7 @@ class TransactionParser {
     caseSensitive: false,
   );
 
-  // ─── Merchant extraction ──────────────────────────────────
+  // ─── Merchant extraction (P2M standard) ────────────────────
   // Matches: "to Swiggy", "at Amazon", "paid to Zomato"
   static final _merchantRegex = RegExp(
     r"(?:to|at|paid\s+to|transferred\s+to|sent\s+to)\s+([A-Za-z0-9][\w\s.&\-']*?)(?:\s+(?:on|via|UPI|Ref|using|through|for|$)|\.|$)",
@@ -82,6 +93,29 @@ class TransactionParser {
     caseSensitive: false,
   );
 
+  // ─── P2P: Phone number as merchant ────────────────────────
+  // Matches: "to +91XXXXXXXXXX", "to 9876543210"
+  static final _phoneNumberRegex = RegExp(
+    r'(?:to|sent\s+to)\s+(\+?91[\s-]?\d{10}|\d{10})\b',
+    caseSensitive: false,
+  );
+
+  // ─── GPay specific P2P format ─────────────────────────────
+  // Matches: "You sent ₹500 to Name" or "Sent ₹200 to Name"
+  static final _gpaySentRegex = RegExp(
+    r"(?:You\s+)?sent\s+(?:Rs\.?\s?|₹\s?|INR\s?)\s*[0-9,]+(?:\.[0-9]{1,2})?\s+to\s+([A-Za-z][\w\s.&\-']+?)(?:\s+(?:on|via|UPI|$)|\.|$)",
+    caseSensitive: false,
+  );
+
+  // ─── PhonePe specific format ──────────────────────────────
+  // Matches: "Payment of ₹200 to Name was successful"
+  static final _phonePePaymentRegex = RegExp(
+    r"Payment\s+of\s+(?:Rs\.?\s?|₹\s?|INR\s?)\s*[0-9,]+(?:\.[0-9]{1,2})?\s+to\s+([A-Za-z0-9][\w\s.&\-']*?)(?:\s+(?:was|is|has|on|via|$)|\.|$)",
+    caseSensitive: false,
+  );
+
+
+
   /// Parse a notification body text into a [ParsedTransaction].
   ///
   /// Returns `null` if:
@@ -110,18 +144,34 @@ class TransactionParser {
 
     // Default to debit if no clear indicator (most UPI notifications
     // for payments don't always say "debited")
-    final isDebit = true;
+    final isDebit = hasDebit || !hasCredit;
 
-    // 3. Extract merchant name
+    // 3. Extract merchant name (try multiple strategies)
     String? merchant;
 
-    // Try VPA-based merchant first (most reliable in bank SMS)
-    final vpaMatch = _vpaRegex.firstMatch(text);
-    if (vpaMatch != null) {
-      merchant = _cleanMerchant(vpaMatch.group(1)!);
+    // Strategy A: Try GPay-specific "sent ₹X to Name" format
+    final gpayMatch = _gpaySentRegex.firstMatch(text);
+    if (gpayMatch != null) {
+      merchant = _cleanMerchant(gpayMatch.group(1)!);
     }
 
-    // Try standard "to/at <merchant>" pattern
+    // Strategy B: Try PhonePe "Payment of ₹X to Name" format
+    if (merchant == null) {
+      final phonePeMatch = _phonePePaymentRegex.firstMatch(text);
+      if (phonePeMatch != null) {
+        merchant = _cleanMerchant(phonePeMatch.group(1)!);
+      }
+    }
+
+    // Strategy C: Try VPA-based merchant (most reliable in bank SMS)
+    if (merchant == null) {
+      final vpaMatch = _vpaRegex.firstMatch(text);
+      if (vpaMatch != null) {
+        merchant = _cleanMerchant(vpaMatch.group(1)!);
+      }
+    }
+
+    // Strategy D: Try standard "to/at <merchant>" pattern
     if (merchant == null) {
       final merchantMatch = _merchantRegex.firstMatch(text);
       if (merchantMatch != null) {
@@ -129,7 +179,7 @@ class TransactionParser {
       }
     }
 
-    // Try bank SMS pattern "to <name>" near UPI/A/c context
+    // Strategy E: Try bank SMS pattern "to <name>" near UPI/A/c context
     if (merchant == null) {
       final bankMatch = _bankSmsMerchantRegex.firstMatch(text);
       if (bankMatch != null) {
@@ -137,7 +187,15 @@ class TransactionParser {
       }
     }
 
-    // Try "from <merchant>" pattern
+    // Strategy F: Try phone number as merchant (P2P transfers)
+    if (merchant == null) {
+      final phoneMatch = _phoneNumberRegex.firstMatch(text);
+      if (phoneMatch != null) {
+        merchant = _formatPhoneNumber(phoneMatch.group(1)!);
+      }
+    }
+
+    // Strategy G: Try "from <merchant>" pattern
     if (merchant == null) {
       final fromMatch = _merchantFromRegex.firstMatch(text);
       if (fromMatch != null) {
@@ -172,6 +230,14 @@ class TransactionParser {
     // Remove "a/c", "account" suffixes
     cleaned = cleaned.replaceAll(RegExp(r'\s*(a/c|account|ac)\s*$', caseSensitive: false), '');
 
+    // Remove "was successful", "successfully" etc.
+    cleaned = cleaned.replaceAll(
+      RegExp(r'\s*(was\s+)?successful(ly)?\s*$', caseSensitive: false), '');
+
+    // Remove common noise words at the end
+    cleaned = cleaned.replaceAll(
+      RegExp(r'\s*(your|the|a)\s*$', caseSensitive: false), '');
+
     // Capitalize first letter of each word
     if (cleaned.isNotEmpty) {
       cleaned = cleaned.split(' ').map((word) {
@@ -181,5 +247,18 @@ class TransactionParser {
     }
 
     return cleaned.isEmpty ? 'Unknown' : cleaned;
+  }
+
+  /// Format a phone number for display as merchant name
+  static String _formatPhoneNumber(String raw) {
+    final digits = raw.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.length == 12 && digits.startsWith('91')) {
+      // +91XXXXXXXXXX → +91 XXXXX XXXXX
+      return '+91 ${digits.substring(2, 7)} ${digits.substring(7)}';
+    } else if (digits.length == 10) {
+      // XXXXXXXXXX → XXXXX XXXXX
+      return '${digits.substring(0, 5)} ${digits.substring(5)}';
+    }
+    return raw;
   }
 }

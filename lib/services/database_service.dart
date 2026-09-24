@@ -139,10 +139,11 @@ class DatabaseService {
     }
   }
 
-  /// Close the database
+  /// Close the database safely (no-op if already closed)
   Future<void> close() async {
-    final db = await database;
-    db.close();
-    _database = null;
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
   }
 }

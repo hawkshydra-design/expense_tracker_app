@@ -8,13 +8,16 @@ import '../repositories/expense_repository.dart';
 import '../services/event_bus.dart';
 import '../utils/result.dart';
 
-class ExpenseProvider extends ChangeNotifier {
+/// Typedef for backward compatibility — use TransactionProvider in new code.
+typedef ExpenseProvider = TransactionProvider;
+
+class TransactionProvider extends ChangeNotifier {
   final ExpenseRepository _expenseRepo;
   final EventBus _eventBus;
   final Uuid _uuid = const Uuid();
   StreamSubscription? _eventSub;
 
-  ExpenseProvider({
+  TransactionProvider({
     required ExpenseRepository expenseRepo,
     required EventBus eventBus,
   })  : _expenseRepo = expenseRepo,
@@ -35,6 +38,10 @@ class ExpenseProvider extends ChangeNotifier {
   double? _weekCache;
   double? _monthCache;
   Map<ExpenseCategory, double>? _categoryCache;
+  double? _todayIncomeCache;
+  double? _weekIncomeCache;
+  double? _monthIncomeCache;
+  Map<IncomeCategory, double>? _incomeCategoryCache;
 
   // ─── Getters ────────────────────────────────────────────────
 
@@ -68,11 +75,11 @@ class ExpenseProvider extends ChangeNotifier {
   /// Net balance (income - expenses)
   double get netBalance => totalIncome - totalExpenses;
 
-  /// Today's spending (cached)
+  /// Today's spending — expense type only (cached)
   double get todaySpending {
     if (_todayCache != null) return _todayCache!;
     final now = DateTime.now();
-    _todayCache = _expenses
+    _todayCache = onlyExpenses
         .where((e) =>
             e.date.year == now.year &&
             e.date.month == now.month &&
@@ -81,35 +88,35 @@ class ExpenseProvider extends ChangeNotifier {
     return _todayCache!;
   }
 
-  /// This week's spending (cached)
+  /// This week's spending — expense type only (cached)
   double get weekSpending {
     if (_weekCache != null) return _weekCache!;
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
     final start =
         DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-    _weekCache = _expenses
+    _weekCache = onlyExpenses
         .where(
             (e) => e.date.isAfter(start.subtract(const Duration(seconds: 1))))
         .fold<double>(0.0, (sum, e) => sum + e.amount);
     return _weekCache!;
   }
 
-  /// This month's spending (cached)
+  /// This month's spending — expense type only (cached)
   double get monthSpending {
     if (_monthCache != null) return _monthCache!;
     final now = DateTime.now();
-    _monthCache = _expenses
+    _monthCache = onlyExpenses
         .where((e) => e.date.year == now.year && e.date.month == now.month)
         .fold<double>(0.0, (sum, e) => sum + e.amount);
     return _monthCache!;
   }
 
-  /// Previous month's spending (for comparison)
+  /// Previous month's spending — expense type only (for comparison).
   double get previousMonthSpending {
     final now = DateTime.now();
     final prevMonth = DateTime(now.year, now.month - 1);
-    return _expenses
+    return onlyExpenses
         .where((e) =>
             e.date.year == prevMonth.year && e.date.month == prevMonth.month)
         .fold<double>(0.0, (sum, e) => sum + e.amount);
@@ -118,15 +125,169 @@ class ExpenseProvider extends ChangeNotifier {
   /// Month-over-month spending difference
   double get monthTrend => monthSpending - previousMonthSpending;
 
-  /// Spending grouped by category (cached)
+  /// Spending grouped by expense category (cached)
   Map<ExpenseCategory, double> get spendingByCategory {
     if (_categoryCache != null) return _categoryCache!;
     final map = <ExpenseCategory, double>{};
-    for (final expense in _expenses) {
+    for (final expense in onlyExpenses) {
       map[expense.category] = (map[expense.category] ?? 0) + expense.amount;
     }
     _categoryCache = map;
     return _categoryCache!;
+  }
+
+  // ─── Income Getters ─────────────────────────────────────────
+
+  /// Today's income (cached)
+  double get todayIncome {
+    if (_todayIncomeCache != null) return _todayIncomeCache!;
+    final now = DateTime.now();
+    _todayIncomeCache = onlyIncome
+        .where((e) =>
+            e.date.year == now.year &&
+            e.date.month == now.month &&
+            e.date.day == now.day)
+        .fold<double>(0.0, (sum, e) => sum + e.amount);
+    return _todayIncomeCache!;
+  }
+
+  /// This week's income (cached)
+  double get weekIncome {
+    if (_weekIncomeCache != null) return _weekIncomeCache!;
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final start =
+        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+    _weekIncomeCache = onlyIncome
+        .where(
+            (e) => e.date.isAfter(start.subtract(const Duration(seconds: 1))))
+        .fold<double>(0.0, (sum, e) => sum + e.amount);
+    return _weekIncomeCache!;
+  }
+
+  /// This month's income (cached)
+  double get monthIncome {
+    if (_monthIncomeCache != null) return _monthIncomeCache!;
+    final now = DateTime.now();
+    _monthIncomeCache = onlyIncome
+        .where((e) => e.date.year == now.year && e.date.month == now.month)
+        .fold<double>(0.0, (sum, e) => sum + e.amount);
+    return _monthIncomeCache!;
+  }
+
+  /// Income grouped by income category (cached)
+  Map<IncomeCategory, double> get incomeByCategory {
+    if (_incomeCategoryCache != null) return _incomeCategoryCache!;
+    final map = <IncomeCategory, double>{};
+    for (final income in onlyIncome) {
+      final cat = income.incomeCategory ?? IncomeCategory.other;
+      map[cat] = (map[cat] ?? 0) + income.amount;
+    }
+    _incomeCategoryCache = map;
+    return _incomeCategoryCache!;
+  }
+
+  // ─── Bar Chart Data ─────────────────────────────────────────
+
+  /// Last 7 days spending (for daily bar chart)
+  /// Returns a map of day label → amount
+  Map<String, double> get dailySpendingData {
+    final now = DateTime.now();
+    final map = <String, double>{};
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    for (int i = 6; i >= 0; i--) {
+      final day = now.subtract(Duration(days: i));
+      final label = dayNames[day.weekday - 1];
+      map[label] = onlyExpenses
+          .where((e) =>
+              e.date.year == day.year &&
+              e.date.month == day.month &&
+              e.date.day == day.day)
+          .fold<double>(0.0, (sum, e) => sum + e.amount);
+    }
+    return map;
+  }
+
+  /// Last 7 days income (for daily bar chart)
+  Map<String, double> get dailyIncomeData {
+    final now = DateTime.now();
+    final map = <String, double>{};
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    for (int i = 6; i >= 0; i--) {
+      final day = now.subtract(Duration(days: i));
+      final label = dayNames[day.weekday - 1];
+      map[label] = onlyIncome
+          .where((e) =>
+              e.date.year == day.year &&
+              e.date.month == day.month &&
+              e.date.day == day.day)
+          .fold<double>(0.0, (sum, e) => sum + e.amount);
+    }
+    return map;
+  }
+
+  /// Last 4 weeks spending (for weekly bar chart)
+  Map<String, double> get weeklySpendingData {
+    final now = DateTime.now();
+    final map = <String, double>{};
+    for (int i = 3; i >= 0; i--) {
+      final weekEnd = now.subtract(Duration(days: i * 7));
+      final weekStart = weekEnd.subtract(const Duration(days: 6));
+      final label = 'W${4 - i}';
+      map[label] = onlyExpenses
+          .where((e) =>
+              !e.date.isBefore(DateTime(weekStart.year, weekStart.month, weekStart.day)) &&
+              !e.date.isAfter(DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59)))
+          .fold<double>(0.0, (sum, e) => sum + e.amount);
+    }
+    return map;
+  }
+
+  /// Last 4 weeks income (for weekly bar chart)
+  Map<String, double> get weeklyIncomeData {
+    final now = DateTime.now();
+    final map = <String, double>{};
+    for (int i = 3; i >= 0; i--) {
+      final weekEnd = now.subtract(Duration(days: i * 7));
+      final weekStart = weekEnd.subtract(const Duration(days: 6));
+      final label = 'W${4 - i}';
+      map[label] = onlyIncome
+          .where((e) =>
+              !e.date.isBefore(DateTime(weekStart.year, weekStart.month, weekStart.day)) &&
+              !e.date.isAfter(DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59)))
+          .fold<double>(0.0, (sum, e) => sum + e.amount);
+    }
+    return map;
+  }
+
+  /// Last 6 months spending (for monthly bar chart)
+  Map<String, double> get monthlySpendingData {
+    final now = DateTime.now();
+    final map = <String, double>{};
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    for (int i = 5; i >= 0; i--) {
+      final month = DateTime(now.year, now.month - i, 1);
+      final label = monthNames[month.month - 1];
+      map[label] = onlyExpenses
+          .where((e) => e.date.year == month.year && e.date.month == month.month)
+          .fold<double>(0.0, (sum, e) => sum + e.amount);
+    }
+    return map;
+  }
+
+  /// Last 6 months income (for monthly bar chart)
+  Map<String, double> get monthlyIncomeData {
+    final now = DateTime.now();
+    final map = <String, double>{};
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    for (int i = 5; i >= 0; i--) {
+      final month = DateTime(now.year, now.month - i, 1);
+      final label = monthNames[month.month - 1];
+      map[label] = onlyIncome
+          .where((e) => e.date.year == month.year && e.date.month == month.month)
+          .fold<double>(0.0, (sum, e) => sum + e.amount);
+    }
+    return map;
   }
 
   /// Recent 5 expenses
@@ -142,6 +303,10 @@ class ExpenseProvider extends ChangeNotifier {
     _weekCache = null;
     _monthCache = null;
     _categoryCache = null;
+    _todayIncomeCache = null;
+    _weekIncomeCache = null;
+    _monthIncomeCache = null;
+    _incomeCategoryCache = null;
   }
 
   /// Targeted cache invalidation — only clears caches affected by [date].
@@ -149,10 +314,12 @@ class ExpenseProvider extends ChangeNotifier {
   void _invalidateForDate(DateTime date) {
     final now = DateTime.now();
     _categoryCache = null; // always affected by any add
+    _incomeCategoryCache = null;
 
     // Only invalidate today cache if the new item is today
     if (date.year == now.year && date.month == now.month && date.day == now.day) {
       _todayCache = null;
+      _todayIncomeCache = null;
     }
 
     // Only invalidate week cache if the item falls in the current week
@@ -160,11 +327,13 @@ class ExpenseProvider extends ChangeNotifier {
     final startOfWeek = DateTime(weekStart.year, weekStart.month, weekStart.day);
     if (!date.isBefore(startOfWeek)) {
       _weekCache = null;
+      _weekIncomeCache = null;
     }
 
     // Only invalidate month cache if same month
     if (date.year == now.year && date.month == now.month) {
       _monthCache = null;
+      _monthIncomeCache = null;
     }
   }
 
@@ -200,14 +369,26 @@ class ExpenseProvider extends ChangeNotifier {
     required DateTime date,
     String? note,
   }) async {
+    // Input validation (#10, #11)
+    final trimmedTitle = title.trim();
+    if (trimmedTitle.isEmpty || trimmedTitle.length > 200) {
+      return const Failure(DataError('Title must be 1-200 characters'));
+    }
+    if (amount <= 0 || amount > 999999999) {
+      return const Failure(DataError('Amount must be between 0 and 999,999,999'));
+    }
+    if (note != null && note.length > 1000) {
+      return const Failure(DataError('Note must be under 1000 characters'));
+    }
+
     final expense = Expense(
       id: _uuid.v4(),
       userId: _userId,
-      title: title,
+      title: trimmedTitle,
       amount: amount,
       category: category,
       date: date,
-      note: note,
+      note: note?.trim(),
     );
 
     try {
@@ -232,14 +413,26 @@ class ExpenseProvider extends ChangeNotifier {
     required DateTime date,
     String? note,
   }) async {
+    // Input validation (#10, #11)
+    final trimmedTitle = title.trim();
+    if (trimmedTitle.isEmpty || trimmedTitle.length > 200) {
+      return const Failure(DataError('Title must be 1-200 characters'));
+    }
+    if (amount <= 0 || amount > 999999999) {
+      return const Failure(DataError('Amount must be between 0 and 999,999,999'));
+    }
+    if (note != null && note.length > 1000) {
+      return const Failure(DataError('Note must be under 1000 characters'));
+    }
+
     final income = Expense(
       id: _uuid.v4(),
       userId: _userId,
-      title: title,
+      title: trimmedTitle,
       amount: amount,
       category: ExpenseCategory.other,
       date: date,
-      note: note,
+      note: note?.trim(),
       type: TransactionType.income,
       incomeCategory: incomeCategory,
     );
@@ -296,9 +489,13 @@ class ExpenseProvider extends ChangeNotifier {
   /// Delete an expense — returns the deleted expense for undo
   Future<Expense?> deleteExpense(String id) async {
     try {
-      final expense = _expenses.firstWhere((e) => e.id == id);
+      // Use indexWhere + safe access instead of firstWhere to avoid
+      // StateError if the expense was already removed (race condition fix #15)
+      final index = _expenses.indexWhere((e) => e.id == id);
+      if (index == -1) return null;
+      final expense = _expenses[index];
       await _expenseRepo.deleteExpense(id, _userId);
-      _expenses.removeWhere((e) => e.id == id);
+      _expenses.removeAt(index);
       _invalidateCaches();
       notifyListeners();
       return expense;
@@ -327,9 +524,17 @@ class ExpenseProvider extends ChangeNotifier {
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
-  /// Get total spending for a specific date range (from loaded data)
+  /// Get total spending (expenses only) for a specific date range
   double getSpendingInRange(DateTime start, DateTime end) {
     return getExpensesInRange(start, end)
+        .where((e) => e.type == TransactionType.expense)
+        .fold(0.0, (sum, e) => sum + e.amount);
+  }
+
+  /// Get total income for a specific date range
+  double getIncomeInRange(DateTime start, DateTime end) {
+    return getExpensesInRange(start, end)
+        .where((e) => e.type == TransactionType.income)
         .fold(0.0, (sum, e) => sum + e.amount);
   }
 

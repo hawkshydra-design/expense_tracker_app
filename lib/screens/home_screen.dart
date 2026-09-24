@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/theme_provider.dart';
 import '../utils/constants.dart';
+import '../models/expense.dart';
 import '../widgets/expandable_fab.dart';
 import '../widgets/animated_bottom_nav_bar.dart';
+import '../widgets/bounce_tap.dart';
 import '../widgets/dashboard_tab.dart';
 import 'stats_screen.dart';
 import 'settings_screen.dart';
@@ -22,17 +25,22 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+
+  /// Switch to a specific tab — callable from child widgets via
+  /// `context.findAncestorStateOfType<HomeScreenState>()?.switchToTab(2)`
+  void switchToTab(int index) => setState(() => _currentIndex = index);
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = AppBreakpoints.isDesktop(context);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
       floatingActionButton: _currentIndex == 0 ? _buildFab() : null,
     );
@@ -41,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ─── Desktop: Side nav + content ─────────────────────────
   Widget _buildDesktopLayout() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.darkSurface : AppColors.lightSurface;
+    final bgColor = isDark ? AppColors.kSurface : AppColors.lightSurface;
 
     return Row(
       children: [
@@ -53,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
             border: Border(
               right: BorderSide(
                 color: isDark
-                    ? AppColors.darkBorder.withValues(alpha: 0.3)
+                    ? AppColors.kCardBorder
                     : AppColors.lightBorder,
               ),
             ),
@@ -70,29 +78,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: const Icon(
-                  Icons.account_balance_wallet_rounded,
+                  LucideIcons.wallet,
                   color: Colors.white,
                   size: 22,
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
-              _buildDesktopNavItem(Icons.dashboard_rounded, 'Home', 0),
+              _buildDesktopNavItem(LucideIcons.home, 'Home', 0),
               const SizedBox(height: AppSpacing.sm),
-              _buildDesktopNavItem(Icons.pie_chart_rounded, 'Stats', 1),
+              _buildDesktopNavItem(LucideIcons.barChart2, 'Stats', 1),
               const SizedBox(height: AppSpacing.sm),
-              _buildDesktopNavItem(Icons.settings_rounded, 'Settings', 2),
+              _buildDesktopNavItem(LucideIcons.settings2, 'Settings', 2),
               const Spacer(),
               // Theme toggle
               Consumer<ThemeProvider>(
                 builder: (context, themeProvider, _) {
-                  return IconButton(
-                    onPressed: themeProvider.toggleTheme,
-                    icon: Icon(
+                  return BounceTap(
+                    onTap: themeProvider.toggleTheme,
+                    child: Icon(
                       themeProvider.isDark
-                          ? Icons.light_mode_rounded
-                          : Icons.dark_mode_rounded,
+                          ? LucideIcons.sun
+                          : LucideIcons.moon,
                       color: isDark
-                          ? AppColors.darkTextMuted
+                          ? AppColors.kTextMuted
                           : AppColors.lightTextMuted,
                     ),
                   );
@@ -125,18 +133,15 @@ class _HomeScreenState extends State<HomeScreen> {
             child: AnimatedBottomNavBar(
               items: const [
                 NavItem(
-                  icon: Icons.dashboard_outlined,
-                  activeIcon: Icons.dashboard_rounded,
+                  icon: LucideIcons.home,
                   label: 'Home',
                 ),
                 NavItem(
-                  icon: Icons.pie_chart_outline_rounded,
-                  activeIcon: Icons.pie_chart_rounded,
+                  icon: LucideIcons.barChart2,
                   label: 'Stats',
                 ),
                 NavItem(
-                  icon: Icons.settings_outlined,
-                  activeIcon: Icons.settings_rounded,
+                  icon: LucideIcons.settings2,
                   label: 'Settings',
                 ),
               ],
@@ -166,20 +171,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSelected = _currentIndex == index;
     final color = isSelected
-        ? AppColors.primary
-        : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted);
+        ? AppColors.kViolet
+        : (isDark ? AppColors.kTextMuted : AppColors.lightTextMuted);
 
     return Tooltip(
       message: label,
-      child: InkWell(
+      child: BounceTap(
         onTap: () => setState(() => _currentIndex = index),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Container(
+        child: AnimatedContainer(
+          duration: AppDurations.fast,
           width: 56,
           height: 56,
           decoration: BoxDecoration(
             color: isSelected
-                ? AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.08)
+                ? AppColors.kViolet.withValues(alpha: isDark ? 0.15 : 0.08)
                 : null,
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
@@ -204,26 +209,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return ExpandableFab(
       actions: [
         FabAction(
-          icon: Icons.add_rounded,
+          icon: LucideIcons.minusCircle,
           label: 'Add Expense',
-          color: AppColors.expense.withValues(alpha: 0.15),
-          iconColor: AppColors.expense,
+          color: AppColors.kRose.withValues(alpha: 0.15),
+          iconColor: AppColors.kRose,
           onPressed: () => context.push('/add-expense'),
         ),
         FabAction(
-          icon: Icons.savings_rounded,
+          icon: LucideIcons.plusCircle,
           label: 'Add Income',
-          color: AppColors.income.withValues(alpha: 0.15),
-          iconColor: AppColors.incomeDark,
-          onPressed: () {
-            // TODO: Navigate to add-income screen when implemented
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Income tracking coming soon!'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          },
+          color: AppColors.kGreen.withValues(alpha: 0.15),
+          iconColor: AppColors.kGreen,
+          onPressed: () => context.push('/add-expense', extra: {
+            'type': TransactionType.income,
+          }),
         ),
       ],
     );

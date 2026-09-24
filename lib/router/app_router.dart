@@ -5,12 +5,11 @@ import '../providers/auth_provider.dart';
 import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/signup_screen.dart';
-import '../screens/otp_screen.dart';
 import '../screens/forgot_password_screen.dart';
-import '../screens/reset_password_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/add_expense_screen.dart';
 import '../screens/pending_transactions_screen.dart';
+import '../screens/terms_consent_screen.dart';
 import '../models/expense.dart';
 
 /// Centralized route names for type-safe navigation.
@@ -18,16 +17,16 @@ abstract class AppRoutes {
   static const splash = 'splash';
   static const login = 'login';
   static const signup = 'signup';
-  static const otp = 'otp';
   static const forgotPassword = 'forgot-password';
-  static const resetPassword = 'reset-password';
   static const home = 'home';
   static const addExpense = 'add-expense';
   static const pendingTransactions = 'pending-transactions';
+  static const termsConsent = 'terms-consent';
+  // Removed: otp, resetPassword (Firebase handles both)
 }
 
 /// Auth-protected routes that require authentication
-const _protectedRoutes = ['/home', '/add-expense', '/pending-transactions'];
+const _protectedRoutes = ['/home', '/add-expense', '/pending-transactions', '/terms-consent'];
 
 /// Auth routes that logged-in users shouldn't see
 const _authRoutes = ['/login', '/signup', '/forgot-password'];
@@ -44,11 +43,6 @@ GoRouter buildAppRouter(AuthProvider authProvider) {
 
       // Don't redirect splash — it handles its own navigation
       if (currentPath == '/splash') return null;
-
-      // Don't redirect OTP or reset-password — they're mid-flow
-      if (currentPath == '/otp' || currentPath == '/reset-password') {
-        return null;
-      }
 
       // Redirect unauthenticated users away from protected routes
       if (!isAuthenticated && _protectedRoutes.contains(currentPath)) {
@@ -79,19 +73,9 @@ GoRouter buildAppRouter(AuthProvider authProvider) {
         builder: (context, state) => const SignupScreen(),
       ),
       GoRoute(
-        path: '/otp',
-        name: AppRoutes.otp,
-        builder: (context, state) => const OtpScreen(),
-      ),
-      GoRoute(
         path: '/forgot-password',
         name: AppRoutes.forgotPassword,
         builder: (context, state) => const ForgotPasswordScreen(),
-      ),
-      GoRoute(
-        path: '/reset-password',
-        name: AppRoutes.resetPassword,
-        builder: (context, state) => const ResetPasswordScreen(),
       ),
       GoRoute(
         path: '/home',
@@ -102,14 +86,26 @@ GoRouter buildAppRouter(AuthProvider authProvider) {
         path: '/add-expense',
         name: AppRoutes.addExpense,
         builder: (context, state) {
-          final expense = state.extra as Expense?;
-          return AddExpenseScreen(expense: expense);
+          final extra = state.extra;
+          if (extra is Expense) {
+            return AddExpenseScreen(expense: extra);
+          }
+          if (extra is Map<String, dynamic>) {
+            final type = extra['type'] as TransactionType? ?? TransactionType.expense;
+            return AddExpenseScreen(initialType: type);
+          }
+          return const AddExpenseScreen();
         },
       ),
       GoRoute(
         path: '/pending-transactions',
         name: AppRoutes.pendingTransactions,
         builder: (context, state) => const PendingTransactionsScreen(),
+      ),
+      GoRoute(
+        path: '/terms-consent',
+        name: AppRoutes.termsConsent,
+        builder: (context, state) => const TermsConsentScreen(),
       ),
     ],
   );

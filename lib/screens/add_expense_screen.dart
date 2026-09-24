@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/expense_provider.dart';
 import '../models/expense.dart';
@@ -10,10 +11,17 @@ import '../models/income_category.dart';
 import '../utils/constants.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/gradient_button.dart';
+import '../widgets/bounce_tap.dart';
+import '../utils/result.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final Expense? expense;
-  const AddExpenseScreen({super.key, this.expense});
+  final TransactionType initialType;
+  const AddExpenseScreen({
+    super.key,
+    this.expense,
+    this.initialType = TransactionType.expense,
+  });
 
   @override
   State<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -33,6 +41,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   @override
   void initState() {
     super.initState();
+    _transactionType = widget.initialType;
     if (widget.expense != null) {
       _isEditing = true;
       _titleController.text = widget.expense!.title;
@@ -66,7 +75,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(primary: AppColors.primary),
+            colorScheme: Theme.of(context).colorScheme.copyWith(primary: AppColors.kViolet),
           ),
           child: child!,
         );
@@ -75,14 +84,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
-  void _saveExpense() {
+  Future<void> _saveExpense() async {
     if (!_formKey.currentState!.validate()) return;
     HapticFeedback.mediumImpact();
 
     final provider = context.read<ExpenseProvider>();
+    Result<void> result;
 
     if (_isEditing) {
-      provider.updateExpense(widget.expense!.copyWith(
+      result = await provider.updateExpense(widget.expense!.copyWith(
         title: _titleController.text.trim(),
         amount: double.parse(_amountController.text.trim()),
         category: _isIncome ? ExpenseCategory.other : _selectedCategory,
@@ -92,7 +102,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         incomeCategory: _isIncome ? _selectedIncomeCategory : null,
       ));
     } else if (_isIncome) {
-      provider.addIncome(
+      result = await provider.addIncome(
         title: _titleController.text.trim(),
         amount: double.parse(_amountController.text.trim()),
         incomeCategory: _selectedIncomeCategory,
@@ -100,7 +110,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
       );
     } else {
-      provider.addExpense(
+      result = await provider.addExpense(
         title: _titleController.text.trim(),
         amount: double.parse(_amountController.text.trim()),
         category: _selectedCategory,
@@ -109,25 +119,48 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       );
     }
 
+    if (!mounted) return;
+
+    if (result.isFailure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorOrNull?.message ?? 'Failed to save'),
+          backgroundColor: AppColors.kRose,
+        ),
+      );
+      return;
+    }
+
     context.pop();
+  }
+
+  Widget _stagger(int index, Widget child) {
+    return child
+        .animate()
+        .fadeIn(delay: (100 + index * 70).ms, duration: 400.ms)
+        .slideY(begin: 0.12, curve: Curves.easeOutCubic);
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final textColor = isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary;
+    final subtitleColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
+    final cardColor = isDark ? AppColors.kSurface : AppColors.lightCard;
+    final borderColor = isDark ? AppColors.kCardBorder : AppColors.lightBorder;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(_isEditing
             ? (_isIncome ? 'Edit Income' : 'Edit Expense')
             : (_isIncome ? 'Add Income' : 'Add Expense')),
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: Icon(Icons.close_rounded, color: textColor),
+        leading: BounceTap(
+          onTap: () => context.pop(),
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Icon(LucideIcons.x),
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -140,7 +173,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               // ─── Transaction Type Toggle ─────────────────
               Container(
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCardAlt : AppColors.lightCardAlt,
+                  color: isDark ? AppColors.kSurfaceLight : AppColors.lightCardAlt,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(color: borderColor.withValues(alpha: 0.3)),
                 ),
@@ -150,9 +183,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     Expanded(
                       child: _TypeToggleButton(
                         label: 'Expense',
-                        icon: Icons.arrow_upward_rounded,
+                        icon: LucideIcons.arrowUpRight,
                         isSelected: !_isIncome,
-                        color: AppColors.expense,
+                        color: AppColors.kRose,
                         onTap: () {
                           HapticFeedback.selectionClick();
                           setState(() => _transactionType = TransactionType.expense);
@@ -162,9 +195,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     Expanded(
                       child: _TypeToggleButton(
                         label: 'Income',
-                        icon: Icons.arrow_downward_rounded,
+                        icon: LucideIcons.arrowDownLeft,
                         isSelected: _isIncome,
-                        color: AppColors.income,
+                        color: AppColors.kGreen,
                         onTap: () {
                           HapticFeedback.selectionClick();
                           setState(() => _transactionType = TransactionType.income);
@@ -173,111 +206,133 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     ),
                   ],
                 ),
-              ).animate().fadeIn(duration: 300.ms),
+              )
+                  .animate()
+                  .fadeIn(duration: 300.ms, curve: Curves.easeOut),
 
               const SizedBox(height: AppSpacing.lg),
 
               // Title
-              Text('Title', style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600))
-                  .animate().fadeIn(duration: 300.ms),
-              const SizedBox(height: AppSpacing.sm),
-              AppTextField(
-                controller: _titleController,
-                hintText: _isIncome ? 'e.g. Salary, Freelance Payment' : 'e.g. Coffee, Groceries',
-                prefixIcon: Icons.edit_rounded,
-                validator: (v) => v?.trim().isEmpty == true ? 'Title required' : null,
-              ).animate().fadeIn(delay: 100.ms, duration: 400.ms).slideX(begin: -0.05),
+              _stagger(0, Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Title', style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppTextField(
+                    controller: _titleController,
+                    hintText: _isIncome ? 'e.g. Salary, Freelance Payment' : 'e.g. Coffee, Groceries',
+                    prefixIcon: LucideIcons.pencil,
+                    validator: (v) => v?.trim().isEmpty == true ? 'Title required' : null,
+                  ),
+                ],
+              )),
 
               const SizedBox(height: AppSpacing.lg),
 
               // Amount
-              Text('Amount', style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600))
-                  .animate().fadeIn(delay: 150.ms, duration: 300.ms),
-              const SizedBox(height: AppSpacing.sm),
-              AppTextField(
-                controller: _amountController,
-                hintText: '0.00',
-                prefixIcon: Icons.currency_rupee_rounded,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Amount required';
-                  final amount = double.tryParse(v.trim());
-                  if (amount == null || amount <= 0) return 'Enter a valid amount';
-                  return null;
-                },
-              ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideX(begin: -0.05),
+              _stagger(1, Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Amount', style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppTextField(
+                    controller: _amountController,
+                    hintText: '0.00',
+                    prefixIcon: LucideIcons.indianRupee,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Amount required';
+                      final amount = double.tryParse(v.trim());
+                      if (amount == null || amount <= 0) return 'Enter a valid amount';
+                      return null;
+                    },
+                  ),
+                ],
+              )),
 
               const SizedBox(height: AppSpacing.lg),
 
               // Category
-              Text(
-                _isIncome ? 'Income Source' : 'Category',
-                style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600),
-              ).animate().fadeIn(delay: 250.ms, duration: 300.ms),
-              const SizedBox(height: AppSpacing.sm),
-
-              // Animated switcher between expense and income categories
-              AnimatedSwitcher(
-                duration: AppDurations.normal,
-                child: _isIncome
-                    ? _buildIncomeCategoryChips(cardColor, borderColor, subtitleColor, textColor)
-                    : _buildExpenseCategoryChips(cardColor, borderColor, subtitleColor, textColor),
-              ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
+              _stagger(2, Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isIncome ? 'Income Source' : 'Category',
+                    style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AnimatedSwitcher(
+                    duration: AppDurations.normal,
+                    child: _isIncome
+                        ? _buildIncomeCategoryChips(cardColor, borderColor, subtitleColor, textColor)
+                        : _buildExpenseCategoryChips(cardColor, borderColor, subtitleColor, textColor),
+                  ),
+                ],
+              )),
 
               const SizedBox(height: AppSpacing.lg),
 
               // Date
-              Text('Date', style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600))
-                  .animate().fadeIn(delay: 350.ms, duration: 300.ms),
-              const SizedBox(height: AppSpacing.sm),
-              GestureDetector(
-                onTap: _pickDate,
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCardAlt : AppColors.lightCardAlt,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: borderColor.withValues(alpha: 0.4)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.calendar_today_rounded, color: AppColors.primary.withValues(alpha: 0.7), size: 20),
-                      const SizedBox(width: AppSpacing.md),
-                      Text(
-                        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                        style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w500),
+              _stagger(3, Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Date', style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: AppSpacing.sm),
+                  BounceTap(
+                    onTap: _pickDate,
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.kSurfaceLight : AppColors.lightCardAlt,
+                        borderRadius: BorderRadius.circular(AppRadius.input),
+                        border: Border.all(color: borderColor.withValues(alpha: 0.4)),
                       ),
-                      const Spacer(),
-                      Icon(Icons.chevron_right_rounded, color: subtitleColor),
-                    ],
+                      child: Row(
+                        children: [
+                          Icon(LucideIcons.calendar, color: AppColors.kViolet.withValues(alpha: 0.7), size: 20),
+                          const SizedBox(width: AppSpacing.md),
+                          Text(
+                            '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                            style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w500),
+                          ),
+                          const Spacer(),
+                          Icon(LucideIcons.chevronRight, color: subtitleColor, size: 20),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
+                ],
+              )),
 
               const SizedBox(height: AppSpacing.lg),
 
               // Note
-              Text('Note (optional)', style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600))
-                  .animate().fadeIn(delay: 450.ms, duration: 300.ms),
-              const SizedBox(height: AppSpacing.sm),
-              AppTextField(
-                controller: _noteController,
-                hintText: 'Add a note...',
-                prefixIcon: Icons.note_rounded,
-                maxLines: 3,
-                textInputAction: TextInputAction.done,
-              ).animate().fadeIn(delay: 500.ms, duration: 400.ms),
+              _stagger(4, Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Note (optional)', style: TextStyle(color: subtitleColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppTextField(
+                    controller: _noteController,
+                    hintText: 'Add a note...',
+                    prefixIcon: LucideIcons.stickyNote,
+                    maxLines: 3,
+                    textInputAction: TextInputAction.done,
+                  ),
+                ],
+              )),
 
               const SizedBox(height: AppSpacing.xl),
 
               // Save button
-              GradientButton(
+              _stagger(5, GradientButton(
                 text: _isEditing
                     ? (_isIncome ? 'Update Income' : 'Update Expense')
                     : (_isIncome ? 'Add Income' : 'Add Expense'),
                 onPressed: _saveExpense,
-                icon: _isEditing ? Icons.check_rounded : Icons.add_rounded,
-              ).animate().fadeIn(delay: 600.ms, duration: 400.ms).slideY(begin: 0.2),
+                gradient: _isIncome ? AppColors.successGradient : AppColors.warmGradient,
+                icon: _isEditing ? LucideIcons.check : LucideIcons.plus,
+              )),
 
               const SizedBox(height: AppSpacing.xl),
             ],
@@ -403,6 +458,8 @@ class _TypeToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -419,12 +476,12 @@ class _TypeToggleButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: isSelected ? color : AppColors.lightTextMuted),
+            Icon(icon, size: 18, color: isSelected ? color : (isDark ? AppColors.kTextMuted : AppColors.lightTextMuted)),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? color : AppColors.lightTextMuted,
+                color: isSelected ? color : (isDark ? AppColors.kTextMuted : AppColors.lightTextMuted),
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 fontSize: 14,
               ),

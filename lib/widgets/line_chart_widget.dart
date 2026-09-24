@@ -19,7 +19,7 @@ class LineChartWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final textColor = isDark ? AppColors.kTextSecondary : AppColors.lightTextSecondary;
 
     if (monthlyData.isEmpty) {
       return SizedBox(
@@ -90,7 +90,7 @@ class LineChartWidget extends StatelessWidget {
                       months[idx],
                       style: TextStyle(
                         color: isHighlighted
-                            ? AppColors.primary
+                            ? AppColors.kViolet
                             : textColor,
                         fontSize: 11,
                         fontWeight: isHighlighted ? FontWeight.w700 : FontWeight.w500,
@@ -115,7 +115,7 @@ class LineChartWidget extends StatelessWidget {
               }).toList(),
               isCurved: true,
               curveSmoothness: 0.3,
-              color: AppColors.primary,
+              color: AppColors.kViolet,
               barWidth: 3,
               isStrokeCapRound: true,
               dotData: FlDotData(
@@ -123,9 +123,9 @@ class LineChartWidget extends StatelessWidget {
                 getDotPainter: (spot, percent, barData, index) {
                   return FlDotCirclePainter(
                     radius: 4,
-                    color: AppColors.primary,
+                    color: AppColors.kViolet,
                     strokeWidth: 2,
-                    strokeColor: isDark ? AppColors.darkCard : Colors.white,
+                    strokeColor: isDark ? AppColors.kSurface : Colors.white,
                   );
                 },
               ),
@@ -135,8 +135,8 @@ class LineChartWidget extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.25),
-                    AppColors.primary.withValues(alpha: 0.0),
+                    AppColors.kViolet.withValues(alpha: 0.25),
+                    AppColors.kViolet.withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -144,9 +144,9 @@ class LineChartWidget extends StatelessWidget {
           ],
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (_) => isDark ? AppColors.darkCard : AppColors.lightCard,
+              getTooltipColor: (_) => isDark ? AppColors.kSurface : AppColors.lightCard,
               tooltipBorder: BorderSide(
-                color: (isDark ? AppColors.darkBorder : AppColors.lightBorder).withValues(alpha: 0.5),
+                color: (isDark ? AppColors.kCardBorder : AppColors.lightBorder).withValues(alpha: 0.5),
               ),
               tooltipRoundedRadius: AppRadius.sm,
               getTooltipItems: (touchedSpots) {
@@ -154,7 +154,7 @@ class LineChartWidget extends StatelessWidget {
                   return LineTooltipItem(
                     context.read<CurrencyProvider>().format(spot.y),
                     TextStyle(
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                      color: isDark ? AppColors.kTextPrimary : AppColors.lightTextPrimary,
                       fontWeight: FontWeight.w700,
                       fontSize: 13,
                     ),

@@ -1,20 +1,50 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../providers/pending_transaction_provider.dart';
 import '../utils/constants.dart';
+import 'bounce_tap.dart';
 
 /// Dashboard banner showing count of auto-detected pending payments.
 ///
 /// Displays a gradient card with pending count, top 2 preview items,
 /// and a "Review" button. Hidden on non-Android platforms or when
 /// no pending transactions exist.
-class PendingTransactionBanner extends StatelessWidget {
+class PendingTransactionBanner extends StatefulWidget {
   const PendingTransactionBanner({super.key});
+
+  @override
+  State<PendingTransactionBanner> createState() => _PendingTransactionBannerState();
+}
+
+class _PendingTransactionBannerState extends State<PendingTransactionBanner>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _mountCtrl;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _mountCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fade = CurvedAnimation(parent: _mountCtrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, -0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _mountCtrl, curve: Curves.easeOut));
+    _mountCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _mountCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,114 +64,101 @@ class PendingTransactionBanner extends StatelessWidget {
           decimalDigits: 0,
         );
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [
-                        AppColors.accent.withValues(alpha: 0.12),
-                        AppColors.primary.withValues(alpha: 0.08),
-                      ]
-                    : [
-                        AppColors.accent.withValues(alpha: 0.08),
-                        AppColors.primary.withValues(alpha: 0.04),
-                      ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              border: Border.all(
-                color: AppColors.accent
-                    .withValues(alpha: isDark ? 0.25 : 0.15),
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
+        return SlideTransition(
+          position: _slide,
+          child: FadeTransition(
+            opacity: _fade,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: BounceTap(
                 onTap: () => context.push('/pending-transactions'),
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Row(
-                    children: [
-                      // Bell icon with badge
-                      _buildIcon(count, isDark),
-                      const SizedBox(width: AppSpacing.md),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.kCyan.withValues(alpha: isDark ? 0.12 : 0.08),
+                        AppColors.kViolet.withValues(alpha: isDark ? 0.08 : 0.04),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(
+                      color: AppColors.kCyan.withValues(alpha: isDark ? 0.25 : 0.15),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Row(
+                      children: [
+                        // Bell icon with badge
+                        _buildIcon(count, isDark),
+                        const SizedBox(width: AppSpacing.md),
 
-                      // Content
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '$count payment${count > 1 ? 's' : ''} detected',
-                              style: TextStyle(
-                                color: isDark
-                                    ? AppColors.darkTextPrimary
-                                    : AppColors.lightTextPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                        // Content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$count payment${count > 1 ? 's' : ''} detected',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? AppColors.kTextPrimary
+                                      : AppColors.lightTextPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              previews.map((p) {
-                                final amt = currencyFmt.format(p.amount);
-                                final name = p.merchant ?? 'UPI';
-                                return '$amt to $name';
-                              }).join(' · '),
-                              style: TextStyle(
-                                color: isDark
-                                    ? AppColors.darkTextSecondary
-                                    : AppColors.lightTextSecondary,
-                                fontSize: 12,
+                              const SizedBox(height: 2),
+                              Text(
+                                previews.map((p) {
+                                  final amt = currencyFmt.format(p.amount);
+                                  final name = p.merchant ?? 'UPI';
+                                  return '$amt to $name';
+                                }).join(' · '),
+                                style: TextStyle(
+                                  color: isDark
+                                      ? AppColors.kTextSecondary
+                                      : AppColors.lightTextSecondary,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(width: AppSpacing.sm),
-
-                      // Review button
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                          vertical: AppSpacing.xs + 2,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: AppColors.accentGradient,
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.full),
-                        ),
-                        child: const Text(
-                          'Review',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                            ],
                           ),
                         ),
-                      ),
-                    ],
+
+                        const SizedBox(width: AppSpacing.sm),
+
+                        // Review button
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.xs + 2,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.accentGradient,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                          ),
+                          child: const Text(
+                            'Review',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        )
-            .animate()
-            .fadeIn(duration: 500.ms)
-            .slideY(begin: -0.15, duration: 500.ms, curve: Curves.easeOut)
-            .shimmer(
-              delay: 500.ms,
-              duration: 1500.ms,
-              color: AppColors.accent.withValues(alpha: 0.08),
-            );
+        );
       },
     );
   }
@@ -154,13 +171,12 @@ class PendingTransactionBanner extends StatelessWidget {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color:
-                AppColors.accent.withValues(alpha: isDark ? 0.15 : 0.1),
+            color: AppColors.kCyan.withValues(alpha: isDark ? 0.15 : 0.1),
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: const Icon(
-            Icons.notifications_active_rounded,
-            color: AppColors.accent,
+            LucideIcons.bellRing,
+            color: AppColors.kCyan,
             size: 22,
           ),
         ),

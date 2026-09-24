@@ -218,8 +218,8 @@ void main() {
         );
         expect(result, isNotNull);
         expect(result!.amount, 500.0);
-        expect(result!.isDebit, true);
-        expect(result!.upiRef, '412345678901');
+        expect(result.isDebit, true);
+        expect(result.upiRef, '412345678901');
       });
 
       test('parses HDFC debit SMS with VPA', () {
@@ -230,7 +230,7 @@ void main() {
         );
         expect(result, isNotNull);
         expect(result!.amount, 250.0);
-        expect(result!.merchant, 'Merchant');
+        expect(result.merchant, 'Merchant');
       });
 
       test('parses bank SMS with Rs. format', () {
@@ -241,7 +241,7 @@ void main() {
         );
         expect(result, isNotNull);
         expect(result!.amount, 1500.0);
-        expect(result!.upiRef, '412345678901');
+        expect(result.upiRef, '412345678901');
       });
 
       test('parses Axis Bank SMS', () {
@@ -262,7 +262,7 @@ void main() {
         );
         expect(result, isNotNull);
         expect(result!.amount, 1299.0);
-        expect(result!.isDebit, true);
+        expect(result.isDebit, true);
       });
 
       test('skips bank credit SMS', () {
@@ -282,7 +282,7 @@ void main() {
         );
         expect(result, isNotNull);
         expect(result!.amount, 150.0);
-        expect(result!.merchant, 'Swiggy');
+        expect(result.merchant, 'Swiggy');
       });
     });
   });

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../utils/constants.dart';
+import 'bounce_tap.dart';
 
 /// Row of quick action chips for the dashboard.
 class QuickActionRow extends StatelessWidget {
@@ -16,35 +18,30 @@ class QuickActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
           _ActionChip(
-            icon: Icons.add_circle_outline_rounded,
+            icon: LucideIcons.minusCircle,
             label: 'Add Expense',
-            color: AppColors.expense,
+            color: AppColors.kRose,
             onTap: onAddExpense,
-            isDark: isDark,
           ),
           const SizedBox(width: AppSpacing.sm),
           _ActionChip(
-            icon: Icons.add_circle_outline_rounded,
+            icon: LucideIcons.plusCircle,
             label: 'Add Income',
-            color: AppColors.income,
+            color: AppColors.kGreen,
             onTap: onAddIncome,
-            isDark: isDark,
           ),
           if (onSync != null) ...[
             const SizedBox(width: AppSpacing.sm),
             _ActionChip(
-              icon: Icons.sync_rounded,
+              icon: LucideIcons.refreshCw,
               label: 'Sync',
-              color: AppColors.accent,
+              color: AppColors.kCyan,
               onTap: onSync!,
-              isDark: isDark,
             ),
           ],
         ],
@@ -58,50 +55,44 @@ class _ActionChip extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  final bool isDark;
 
   const _ActionChip({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
-    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm + 2,
+    return BounceTap(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm + 2,
+        ),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border: Border.all(
+            color: color.withValues(alpha: 0.2),
           ),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: isDark ? 0.12 : 0.08),
-            borderRadius: BorderRadius.circular(AppRadius.full),
-            border: Border.all(
-              color: color.withValues(alpha: isDark ? 0.2 : 0.15),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

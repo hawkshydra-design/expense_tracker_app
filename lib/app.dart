@@ -26,7 +26,7 @@ class _ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
           SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarColor: isDark ? const Color(0xFF0A0A1A) : const Color(0xFFF5F5FA),
+            systemNavigationBarColor: Colors.transparent,
             systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           ),
         );

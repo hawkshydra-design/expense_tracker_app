@@ -33,7 +33,6 @@ class CurrencyProvider extends ChangeNotifier {
     CurrencyInfo(code: 'AED', symbol: 'د.إ', name: 'UAE Dirham', flag: '🇦🇪'),
     CurrencyInfo(code: 'SAR', symbol: '﷼', name: 'Saudi Riyal', flag: '🇸🇦'),
     CurrencyInfo(code: 'BDT', symbol: '৳', name: 'Bangladeshi Taka', flag: '🇧🇩'),
-    CurrencyInfo(code: 'PKR', symbol: 'Rs', name: 'Pakistani Rupee', flag: '🇵🇰'),
     CurrencyInfo(code: 'SGD', symbol: 'S\$', name: 'Singapore Dollar', flag: '🇸🇬'),
     CurrencyInfo(code: 'THB', symbol: '฿', name: 'Thai Baht', flag: '🇹🇭'),
     CurrencyInfo(code: 'BRL', symbol: 'R\$', name: 'Brazilian Real', flag: '🇧🇷'),

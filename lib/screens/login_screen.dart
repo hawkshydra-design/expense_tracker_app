@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
+import '../utils/email_validator.dart';
+import '../utils/password_validator.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/error_banner.dart';
-import '../widgets/animated_gradient_background.dart';
+import '../widgets/bounce_tap.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _error;
 
   @override
@@ -30,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  /// Email/Password login — goes directly to Home (no OTP step)
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -40,9 +45,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // All auth + OTP logic is in AuthProvider — no getIt access needed
     final authProvider = context.read<AuthProvider>();
-    final result = await authProvider.initiateLogin(
+    final result = await authProvider.login(
       email: email,
       password: password,
     );
@@ -52,215 +56,270 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
-      // Credentials valid, OTP sent — navigate to OTP screen
-      // Password is stored securely in AuthProvider memory, NOT in route params
-      context.push('/otp');
+      context.go('/home');
     } else {
       setState(() => _error = result.errorOrNull?.message ?? 'Login failed');
     }
   }
 
+  /// Google Sign-In — works for both login and new account
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isGoogleLoading = true;
+      _error = null;
+    });
+
+    final authProvider = context.read<AuthProvider>();
+    final result = await authProvider.signInWithGoogle();
+
+    if (!mounted) return;
+
+    setState(() => _isGoogleLoading = false);
+
+    if (result.isSuccess) {
+      context.go('/home');
+    } else {
+      final errorMsg = result.errorOrNull?.message;
+      // Don't show error if user just cancelled the popup
+      if (errorMsg != null && errorMsg != 'Sign-in cancelled') {
+        setState(() => _error = errorMsg);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-
     return Scaffold(
-      body: AnimatedGradientBackground(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: AppSpacing.xxl),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: AppSpacing.xxl),
 
-                  // Header
-                  Center(
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: AppShadows.glowPrimary,
-                      ),
-                      child: const Icon(Icons.lock_rounded,
-                          color: Colors.white, size: 32),
+                // ─── Logo ─────────────────────────────────
+                Center(
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: AppColors.kViolet,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      boxShadow: AppShadows.glowViolet,
                     ),
-                  )
-                      .animate()
-                      .scale(
-                          begin: const Offset(0.5, 0.5),
-                          duration: 500.ms,
-                          curve: Curves.elasticOut)
-                      .fadeIn(duration: 400.ms),
+                    child: const Icon(LucideIcons.wallet,
+                        color: Colors.white, size: 32),
+                  ),
+                )
+                    .animate()
+                    .scaleXY(begin: 0.0, duration: 500.ms, curve: Curves.elasticOut),
 
-                  const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
 
-                  Center(
-                    child: Text(
-                      'Welcome Back',
-                      style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          color: textColor),
+                // ─── Title ────────────────────────────────
+                const Center(
+                  child: Text(
+                    'Welcome Back',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.kTextPrimary,
                     ),
-                  )
-                      .animate()
-                      .fadeIn(delay: 150.ms, duration: 400.ms)
-                      .slideY(begin: 0.2, delay: 150.ms),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 150.ms, duration: 400.ms),
 
-                  const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.sm),
 
-                  Center(
-                    child: Text(
-                      'Sign in to continue managing your expenses',
-                      style: TextStyle(fontSize: 14, color: subtitleColor),
-                      textAlign: TextAlign.center,
-                    ),
-                  ).animate().fadeIn(delay: 250.ms, duration: 400.ms),
+                // ─── Subtitle ─────────────────────────────
+                const Center(
+                  child: Text(
+                    'Sign in to continue managing your expenses',
+                    style: TextStyle(fontSize: 14, color: AppColors.kTextSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 250.ms, duration: 400.ms),
 
-                  const SizedBox(height: AppSpacing.xxl),
+                const SizedBox(height: AppSpacing.xxl),
 
-                  // Error banner
-                  if (_error != null)
-                    ErrorBanner(
-                      message: _error!,
-                      onDismiss: () => setState(() => _error = null),
-                    )
-                        .animate()
-                        .fadeIn(duration: 300.ms)
-                        .slideY(begin: -0.2),
-
-                  if (_error != null) const SizedBox(height: AppSpacing.md),
-
-                  // Email field
-                  AppTextField(
-                    controller: _emailController,
-                    hintText: 'Email address',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Email is required';
-                      }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                          .hasMatch(v.trim())) {
-                        return 'Enter a valid email';
-                      }
-                      return null;
-                    },
-                  )
-                      .animate()
-                      .fadeIn(delay: 350.ms, duration: 400.ms)
-                      .slideX(begin: -0.1, delay: 350.ms),
-
+                // ─── Error ────────────────────────────────
+                if (_error != null) ...[
+                  ErrorBanner(
+                    message: _error!,
+                    onDismiss: () => setState(() => _error = null),
+                  ),
                   const SizedBox(height: AppSpacing.md),
+                ],
 
-                  // Password field
-                  AppTextField(
-                    controller: _passwordController,
-                    hintText: 'Password',
-                    prefixIcon: Icons.lock_outline_rounded,
-                    obscureText: true,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _handleLogin(),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Password is required';
-                      if (v.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  )
-                      .animate()
-                      .fadeIn(delay: 450.ms, duration: 400.ms)
-                      .slideX(begin: -0.1, delay: 450.ms),
+                // ─── Email field ──────────────────────────
+                AppTextField(
+                  controller: _emailController,
+                  hintText: 'Email address',
+                  prefixIcon: LucideIcons.mail,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  validator: EmailValidator.validate,
+                )
+                    .animate()
+                    .fadeIn(delay: 350.ms, duration: 400.ms)
+                    .slideY(begin: 0.2, curve: Curves.easeOutCubic),
 
-                  const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
 
-                  // Forgot password
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => context.push('/forgot-password'),
-                      child: const Text('Forgot Password?',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                    ),
-                  ).animate().fadeIn(delay: 550.ms, duration: 300.ms),
+                // ─── Password field ───────────────────────
+                AppTextField(
+                  controller: _passwordController,
+                  hintText: 'Password',
+                  prefixIcon: LucideIcons.lock,
+                  obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _handleLogin(),
+                  validator: PasswordValidator.validateLogin,
+                )
+                    .animate()
+                    .fadeIn(delay: 430.ms, duration: 400.ms)
+                    .slideY(begin: 0.2, curve: Curves.easeOutCubic),
 
-                  const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.sm),
 
-                  // Login button
-                  GradientButton(
-                    text: 'Sign In',
-                    isLoading: _isLoading,
-                    onPressed: _handleLogin,
-                    icon: Icons.arrow_forward_rounded,
-                  )
-                      .animate()
-                      .fadeIn(delay: 650.ms, duration: 400.ms)
-                      .slideY(begin: 0.2, delay: 650.ms),
-
-                  const SizedBox(height: AppSpacing.xxl),
-
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(
-                          child: Divider(
-                              color: isDark
-                                  ? AppColors.darkBorder
-                                  : AppColors.lightBorder)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md),
-                        child: Text('OR',
-                            style: TextStyle(
-                                color: subtitleColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600)),
+                // ─── Forgot password ──────────────────────
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: BounceTap(
+                    onTap: () => context.push('/forgot-password'),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                      child: Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: AppColors.kViolet,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
-                      Expanded(
-                          child: Divider(
-                              color: isDark
-                                  ? AppColors.darkBorder
-                                  : AppColors.lightBorder)),
-                    ],
-                  ).animate().fadeIn(delay: 750.ms, duration: 300.ms),
+                    ),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 530.ms, duration: 400.ms),
 
-                  const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
 
-                  // Sign up link
-                  Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text("Don't have an account? ",
-                            style: TextStyle(color: subtitleColor)),
-                        GestureDetector(
-                          onTap: () => context.pushReplacement('/signup'),
-                          child: const Text(
-                            'Sign Up',
-                            style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w700),
+                // ─── Login button ─────────────────────────
+                GradientButton(
+                  text: 'Sign In',
+                  isLoading: _isLoading,
+                  onPressed: _handleLogin,
+                  icon: LucideIcons.arrowRight,
+                )
+                    .animate()
+                    .fadeIn(delay: 630.ms, duration: 400.ms),
+
+                const SizedBox(height: AppSpacing.xxl),
+
+                // ─── Divider ──────────────────────────────
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: AppColors.kCardBorder)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                      child: Text(
+                        'OR',
+                        style: TextStyle(
+                          color: AppColors.kTextMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: AppColors.kCardBorder)),
+                  ],
+                )
+                    .animate()
+                    .fadeIn(delay: 750.ms, duration: 400.ms),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // ─── Google Sign-In button ─────────────────
+                BounceTap(
+                  onTap: _isGoogleLoading ? null : _handleGoogleSignIn,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      border: Border.all(color: AppColors.kCardBorder),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: _isGoogleLoading
+                        ? const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(2),
+                                child: Image.asset(
+                                  'assets/images/google_logo.png',
+                                  height: 20,
+                                  width: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Continue with Google',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: AppColors.kTextPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 830.ms, duration: 400.ms),
+
+                const SizedBox(height: AppSpacing.xl),
+
+                // ─── Sign up link ─────────────────────────
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text("Don't have an account? ",
+                          style: TextStyle(color: AppColors.kTextSecondary)),
+                      BounceTap(
+                        onTap: () => context.pushReplacement('/signup'),
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            color: AppColors.kViolet,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ],
-                    ),
-                  ).animate().fadeIn(delay: 850.ms, duration: 300.ms),
+                      ),
+                    ],
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 900.ms, duration: 400.ms),
 
-                  const SizedBox(height: AppSpacing.xxl),
-                ],
-              ),
+                const SizedBox(height: AppSpacing.xxl),
+              ],
             ),
           ),
         ),
